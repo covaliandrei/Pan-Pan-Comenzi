@@ -1,0 +1,6 @@
+{
+  "name": "Pan Pan Comenzi",
+  "description": "Sistem de gestionare comenzi pentru brutărie (Pan Pan Comenzi) cu roluri pentru puncte de vânzare, producție și administratori.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

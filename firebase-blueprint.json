@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role (client, production, admin)",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name or store name",
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "enum": ["client", "production", "admin"],
+          "description": "User role in the bakery OMS"
+        },
+        "tradingPointName": {
+          "type": "string",
+          "description": "Name of the trading point / store branch",
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["email", "displayName", "role"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Bakery product sold by pieces or weight",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Product title in Romanian",
+          "maxLength": 150
+        },
+        "code": {
+          "type": "string",
+          "description": "Unique product SKU or code",
+          "maxLength": 50
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["buc", "kg"],
+          "description": "Unit of measurement: buc (pieces) or kg (weight)"
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category",
+          "maxLength": 50
+        },
+        "price": {
+          "type": "number",
+          "description": "Price per unit in RON"
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description",
+          "maxLength": 500
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether product is active for orders"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["name", "code", "unit", "price", "active"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Bakery order created by client trading point, picked by production, overseen by admin",
+      "type": "object",
+      "properties": {
+        "orderNumber": {
+          "type": "string",
+          "description": "Human-readable order identifier (e.g. CMD-20261018-001)",
+          "maxLength": 50
+        },
+        "clientId": {
+          "type": "string",
+          "description": "UID of the client who placed the order",
+          "maxLength": 128
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Name of the client / trading point",
+          "maxLength": 100
+        },
+        "clientEmail": {
+          "type": "string",
+          "description": "Email of the client"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "Date order was placed (YYYY-MM-DD)"
+        },
+        "deliveryDate": {
+          "type": "string",
+          "description": "Delivery date requested (YYYY-MM-DD, minimum today)"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["creat", "confirmat", "inchis"],
+          "description": "Order lifecycle state: creat (draft), confirmat (confirmed for production), inchis (picked and closed)"
+        },
+        "items": {
+          "type": "array",
+          "description": "Ordered bakery items"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total order price in RON"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Special delivery or packaging notes",
+          "maxLength": 500
+        },
+        "pickedBy": {
+          "type": "string",
+          "description": "UID of production staff who picked the order",
+          "maxLength": 128
+        },
+        "pickedByName": {
+          "type": "string",
+          "description": "Name of production staff",
+          "maxLength": 100
+        },
+        "pickedAt": {
+          "type": "string",
+          "description": "Timestamp when order was processed by production"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Order creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Order last updated timestamp"
+        }
+      },
+      "required": ["orderNumber", "clientId", "clientName", "orderDate", "deliveryDate", "state", "items"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin registry record",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Admin email address"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"],
+          "description": "Admin role"
+        }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles containing their assigned role and trading point information."
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catalog of bakery products managed by admin/manager and readable by authenticated users."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Bakery orders placed by clients, processed by production staff, and manageable by admins."
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Registry of system administrators."
+    }
+  }
+}
