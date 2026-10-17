@@ -27,7 +27,7 @@ import { PrintOrderModal } from '../modals/PrintOrderModal';
 import { ProductManagement } from './ProductManagement';
 import { CsvProductImport } from './CsvProductImport';
 import { useAuth } from '../../context/AuthContext';
-import { getLocalOrders, updateOrder, deleteOrder } from '../../lib/ordersService';
+import { getLocalOrders, updateOrder, deleteOrder, syncLocalOrdersToFirestore } from '../../lib/ordersService';
 
 export const AdminDashboard: React.FC<{
   onSwitchToClient: () => void;
@@ -53,10 +53,8 @@ export const AdminDashboard: React.FC<{
   };
 
   useEffect(() => {
-    if (!currentUser || isDemoUser) {
-      loadLocalFallback();
-      return;
-    }
+    // Sync any pending offline orders
+    syncLocalOrdersToFirestore().catch(() => {});
 
     setLoadingOrders(true);
     const unsubscribe = onSnapshot(
@@ -67,7 +65,14 @@ export const AdminDashboard: React.FC<{
           list.push({ ...d.data(), id: d.id } as Order);
         });
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        setOrders(list.length > 0 ? list : getLocalOrders());
+        // If Firestore has orders, display all of them
+        if (list.length > 0) {
+          setOrders(list);
+        } else if (isDemoUser) {
+          setOrders(getLocalOrders());
+        } else {
+          setOrders([]);
+        }
         setLoadingOrders(false);
       },
       (error) => {
@@ -77,7 +82,7 @@ export const AdminDashboard: React.FC<{
     );
 
     return () => unsubscribe();
-  }, [currentUser, isDemoUser]);
+  }, [isDemoUser]);
 
   const handleDeleteOrder = async (order: Order) => {
     try {

@@ -83,8 +83,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
         return;
       }
 
-      if (price <= 0) {
-        setErrorMsg('Prețul produsului trebuie să fie mai mare de 0 lei.');
+      if (price < 0 || isNaN(price)) {
+        setErrorMsg('Prețul nu poate fi o valoare negativă.');
         setIsSubmitting(false);
         return;
       }
@@ -235,14 +235,13 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Preț Unitar (lei) *
+              Preț Unitar (lei) <span className="text-slate-400 font-normal text-[11px]">(poate fi 0)</span>
             </label>
             <div className="relative">
               <input
                 type="number"
-                min="0.01"
+                min="0"
                 step="0.01"
-                required
                 value={price}
                 onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
                 placeholder="0.00"

@@ -122,20 +122,85 @@ export function saveLocalOrders(orders: Order[]): void {
   }
 }
 
+/**
+ * Automatically syncs any offline/locally-created orders to Firestore
+ * so Admin and Production will see them immediately.
+ */
+export async function syncLocalOrdersToFirestore(): Promise<number> {
+  const currentUid = auth.currentUser?.uid;
+  const currentEmail = auth.currentUser?.email || '';
+  const localOrders = getLocalOrders();
+
+  // Find local orders created with temporary 'ord-' IDs
+  const pendingOrders = localOrders.filter(
+    (o) => o.id && o.id.startsWith('ord-')
+  );
+
+  if (pendingOrders.length === 0) return 0;
+
+  let syncedCount = 0;
+  const remainingOrders = [...localOrders];
+
+  for (const ord of pendingOrders) {
+    try {
+      const { id, ...dataToSync } = ord;
+      const cleanData = cleanFirestorePayload({
+        ...dataToSync,
+        clientId: currentUid || ord.clientId || 'client-local',
+        clientEmail: currentEmail || ord.clientEmail || '',
+      });
+
+      const docRef = await addDoc(collection(db, 'orders'), cleanData);
+      const idx = remainingOrders.findIndex((o) => o.id === ord.id);
+      if (idx >= 0) {
+        remainingOrders[idx] = { ...remainingOrders[idx], id: docRef.id };
+      }
+      syncedCount++;
+    } catch (e) {
+      console.warn('Could not sync pending order to Firestore:', ord.orderNumber, e);
+    }
+  }
+
+  if (syncedCount > 0) {
+    saveLocalOrders(remainingOrders);
+    console.info(`S-au sincronizat cu succes ${syncedCount} comenzi în baza de date Firestore.`);
+  }
+
+  return syncedCount;
+}
+
 export async function createOrder(
   orderPayload: Omit<Order, 'id'>,
   isDemoMode: boolean
 ): Promise<string> {
   const cleanPayload = cleanFirestorePayload(orderPayload);
 
-  // If real user is authenticated and not in demo mode
+  // If real user is authenticated, create directly in Firestore
   if (auth.currentUser && !isDemoMode) {
     try {
       const docRef = await addDoc(collection(db, 'orders'), cleanPayload);
+      const localOrders = getLocalOrders();
+      saveLocalOrders([
+        { ...(cleanPayload as Omit<Order, 'id'>), id: docRef.id },
+        ...localOrders.filter((o) => o.orderNumber !== orderPayload.orderNumber),
+      ]);
       return docRef.id;
     } catch (err) {
-      console.warn('Firestore addDoc failed, storing locally:', err);
+      console.error('Firestore addDoc error, saving locally as backup:', err);
     }
+  }
+
+  // Also try Firestore even if in demo mode if possible
+  try {
+    const docRef = await addDoc(collection(db, 'orders'), cleanPayload);
+    const localOrders = getLocalOrders();
+    saveLocalOrders([
+      { ...(cleanPayload as Omit<Order, 'id'>), id: docRef.id },
+      ...localOrders.filter((o) => o.orderNumber !== orderPayload.orderNumber),
+    ]);
+    return docRef.id;
+  } catch {
+    // Fallback to local storage if totally offline or permission denied
   }
 
   // Fallback to local storage
@@ -156,10 +221,9 @@ export async function updateOrder(
 ): Promise<void> {
   const cleanUpdates = cleanFirestorePayload(updates);
 
-  if (auth.currentUser && !isDemoMode && !orderId.startsWith('ord-') && !orderId.startsWith('demo-')) {
+  if (!orderId.startsWith('ord-') && !orderId.startsWith('demo-')) {
     try {
       await updateDoc(doc(db, 'orders', orderId), cleanUpdates);
-      return;
     } catch (err) {
       console.warn('Firestore updateDoc failed, updating locally:', err);
     }
@@ -181,10 +245,9 @@ export async function deleteOrder(
   orderId: string,
   isDemoMode: boolean
 ): Promise<void> {
-  if (auth.currentUser && !isDemoMode && !orderId.startsWith('ord-') && !orderId.startsWith('demo-')) {
+  if (!orderId.startsWith('ord-') && !orderId.startsWith('demo-')) {
     try {
       await deleteDoc(doc(db, 'orders', orderId));
-      return;
     } catch (err) {
       console.warn('Firestore deleteDoc failed, deleting locally:', err);
     }

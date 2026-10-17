@@ -29,10 +29,10 @@ export const CsvProductImport: React.FC<CsvProductImportProps> = ({ onSuccess, o
   const [importSummary, setImportSummary] = useState<string | null>(null);
 
   const sampleCsvContent = `cod,denumire,unitate,categorie,pret,descriere,activ
-PA-101,Pâine cu Semințe de Dovleac,buc,Pâine Artizanală,12.50,Pâine cu maia și semințe coapte de dovleac,true
-BG-102,Baghetă Rustică cu Ceapă Caramelizată,buc,Specialități,8.00,Baghetă aromată cu bucățele de ceapă dulce,true
-PL-103,Plăcintă cu Vișine și Griș,kg,Patiserie Dulce,39.00,Foi subțiri umplute cu vișine acrișoare,true
-PK-104,Pâine Țărănească la Vatră,kg,Pâine la Kilogram,11.50,Pâine rotundă la vatră coaptă pe vatră de șamotă,true`;
+PA-101,Pâine cu Semințe de Dovleac,buc,Pâine Artizanală,0,Pâine cu maia și semințe coapte de dovleac,true
+BG-102,Baghetă Rustică cu Ceapă Caramelizată,buc,Specialități,0,Baghetă aromată cu bucățele de ceapă dulce,true
+PL-103,Plăcintă cu Vișine și Griș,kg,Patiserie Dulce,0,Foi subțiri umplute cu vișine acrișoare,true
+PK-104,Pâine Țărănească la Vatră,kg,Pâine la Kilogram,0,Pâine rotundă la vatră coaptă pe vatră de șamotă,true`;
 
   const downloadSampleCsv = () => {
     const blob = new Blob([sampleCsvContent], { type: 'text/csv;charset=utf-8;' });
@@ -83,7 +83,7 @@ PK-104,Pâine Țărănească la Vatră,kg,Pâine la Kilogram,11.50,Pâine rotund
       const errors: string[] = [];
       if (!name) errors.push('Denumire lipsă');
       if (!code) errors.push('Cod lipsă');
-      if (price <= 0) errors.push('Preț invalid');
+      if (price < 0 || isNaN(price)) errors.push('Preț invalid (negativ)');
 
       parsed.push({
         code: code.toUpperCase(),

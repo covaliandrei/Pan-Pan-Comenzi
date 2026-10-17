@@ -19,12 +19,13 @@ import { db } from '../../lib/firebase';
 import { getTodayString, getTomorrowString, formatDateRomanian } from '../../lib/initialData';
 import { PickOrderModal } from '../modals/PickOrderModal';
 import { PrintOrderModal } from '../modals/PrintOrderModal';
-import { getLocalOrders } from '../../lib/ordersService';
+import { getLocalOrders, syncLocalOrdersToFirestore } from '../../lib/ordersService';
 import { useAuth } from '../../context/AuthContext';
 
 export const ProductionDashboard: React.FC = () => {
   const { currentUser, isDemoUser } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string>(getTomorrowString());
+  const [allDates, setAllDates] = useState<boolean>(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [statusFilter, setStatusFilter] = useState<'confirmat' | 'toate' | 'inchis'>('confirmat');
@@ -41,7 +42,7 @@ export const ProductionDashboard: React.FC = () => {
 
   const loadLocalOrdersForDate = (date: string) => {
     const allLocal = getLocalOrders();
-    const forDate = allLocal.filter((o) => o.deliveryDate === date);
+    const forDate = allDates ? allLocal : allLocal.filter((o) => o.deliveryDate === date);
     forDate.sort((a, b) => {
       if (a.state === 'confirmat' && b.state !== 'confirmat') return -1;
       if (a.state !== 'confirmat' && b.state === 'confirmat') return 1;
@@ -52,14 +53,14 @@ export const ProductionDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!currentUser || isDemoUser) {
-      loadLocalOrdersForDate(selectedDate);
-      return;
-    }
+    // Sync any pending offline orders
+    syncLocalOrdersToFirestore().catch(() => {});
 
     setLoading(true);
     const ordersRef = collection(db, 'orders');
-    const q = query(ordersRef, where('deliveryDate', '==', selectedDate));
+    const q = allDates
+      ? query(ordersRef)
+      : query(ordersRef, where('deliveryDate', '==', selectedDate));
 
     const unsubscribe = onSnapshot(
       q,
@@ -73,7 +74,14 @@ export const ProductionDashboard: React.FC = () => {
           if (a.state !== 'confirmat' && b.state === 'confirmat') return 1;
           return a.orderNumber.localeCompare(b.orderNumber);
         });
-        setOrders(list.length > 0 ? list : getLocalOrders().filter((o) => o.deliveryDate === selectedDate));
+        if (list.length > 0) {
+          setOrders(list);
+        } else if (isDemoUser) {
+          const locals = getLocalOrders();
+          setOrders(allDates ? locals : locals.filter((o) => o.deliveryDate === selectedDate));
+        } else {
+          setOrders([]);
+        }
         setLoading(false);
       },
       (error) => {
@@ -83,7 +91,7 @@ export const ProductionDashboard: React.FC = () => {
     );
 
     return () => unsubscribe();
-  }, [selectedDate, currentUser, isDemoUser]);
+  }, [selectedDate, allDates, isDemoUser]);
 
   // Aggregate daily requirements for bakers
   const dailyAggregates: Record<string, { name: string; unit: string; totalOrdered: number; totalPicked: number }> = {};
@@ -139,21 +147,36 @@ export const ProductionDashboard: React.FC = () => {
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-700">
             <button
               type="button"
-              onClick={() => setSelectedDate(todayStr)}
+              onClick={() => {
+                setSelectedDate(todayStr);
+                setAllDates(false);
+              }}
               className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                selectedDate === todayStr ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
+                !allDates && selectedDate === todayStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
               }`}
             >
               Azi
             </button>
             <button
               type="button"
-              onClick={() => setSelectedDate(tomorrowStr)}
+              onClick={() => {
+                setSelectedDate(tomorrowStr);
+                setAllDates(false);
+              }}
               className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                selectedDate === tomorrowStr ? 'bg-amber-500 text-slate-950 shadow-xs' : 'hover:text-slate-900'
+                !allDates && selectedDate === tomorrowStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
               }`}
             >
               Mâine (Implicit)
+            </button>
+            <button
+              type="button"
+              onClick={() => setAllDates(true)}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                allDates ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
+              }`}
+            >
+              Toate Datele
             </button>
           </div>
 
@@ -164,7 +187,10 @@ export const ProductionDashboard: React.FC = () => {
               type="date"
               min={minDate}
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setAllDates(false);
+              }}
               className="text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-hidden"
             />
           </div>

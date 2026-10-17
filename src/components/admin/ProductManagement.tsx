@@ -10,6 +10,7 @@ import {
   XCircle,
   Sparkles,
   FileSpreadsheet,
+  Coins,
 } from 'lucide-react';
 import { Product } from '../../types';
 import { collection, onSnapshot, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
@@ -104,6 +105,33 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
     }
   };
 
+  const [isResettingPrices, setIsResettingPrices] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  const handleResetAllPricesToZero = async () => {
+    try {
+      setIsResettingPrices(true);
+      setResetMessage(null);
+      let count = 0;
+      for (const prod of products) {
+        if (!prod.id.startsWith('init-')) {
+          await updateDoc(doc(db, 'products', prod.id), {
+            price: 0,
+            updatedAt: new Date().toISOString(),
+          });
+          count++;
+        }
+      }
+      setResetMessage(`Prețurile pentru ${count} produse au fost setate la 0 lei în baza de date.`);
+      setTimeout(() => setResetMessage(null), 5000);
+    } catch (err) {
+      console.error('Error resetting prices:', err);
+      setResetMessage('A apărut o eroare la actualizarea prețurilor.');
+    } finally {
+      setIsResettingPrices(false);
+    }
+  };
+
   const categories = ['Toate', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
 
   const filteredProducts = products.filter((p) => {
@@ -118,6 +146,19 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
 
   return (
     <div className="space-y-6">
+      {resetMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center justify-between">
+          <span>{resetMessage}</span>
+          <button
+            type="button"
+            onClick={() => setResetMessage(null)}
+            className="text-emerald-600 hover:text-emerald-900 font-normal underline ml-4 cursor-pointer"
+          >
+            Închide
+          </button>
+        </div>
+      )}
+
       {/* Action Header */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -126,7 +167,7 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
             Catalog Produse Brutărie ({products.length})
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Gestionați produsele, prețurile, unitățile de măsură (buc sau kg) și starea de activare pentru comenzi.
+            Gestionați produsele, unitățile de măsură (buc sau kg) și starea de activare. Prețurile pot fi 0 (funcționalul cu preț rămâne pentru viitor).
           </p>
         </div>
 
@@ -142,6 +183,17 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
               <span>{isSeeding ? 'Se adaugă...' : 'Inițializează Produse Brutărie'}</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={handleResetAllPricesToZero}
+            disabled={isResettingPrices}
+            title="Setează toate prețurile produselor la 0 lei în baza de date"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            <Coins className="w-4 h-4 text-amber-600" />
+            <span>{isResettingPrices ? 'Se actualizează...' : 'Setează prețuri = 0'}</span>
+          </button>
 
           <button
             type="button"

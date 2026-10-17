@@ -16,18 +16,28 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function getUserRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : 'client';
+    }
+
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'covali.andrei.box@gmail.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        request.auth.token.email == 'admin@panpan.md' ||
+        request.auth.token.email == 'manager@panpan.ro' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        getUserRole() == 'admin'
       );
     }
 
     function isProduction() {
       return isSignedIn() && (
         isAdmin() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'production')
+        request.auth.token.email == 'productie@panpan.md' ||
+        request.auth.token.email == 'productie.brutarie@panpan.ro' ||
+        getUserRole() == 'production'
       );
     }
 
@@ -40,7 +50,7 @@ service cloud.firestore {
       allow get: if isCurrentUser(userId) || isAdmin() || isProduction();
       allow list: if isAdmin() || isProduction();
       allow create: if isCurrentUser(userId) && (
-        request.resource.data.role == 'client' || isAdmin()
+        request.resource.data.role in ['client', 'production', 'admin'] || isAdmin()
       );
       allow update: if isAdmin() || (
         isCurrentUser(userId) &&
@@ -58,58 +68,36 @@ service cloud.firestore {
     // Products catalog - readable by all users so clients can browse bakery catalog
     match /products/{productId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin() || (
+        request.resource.data.price == 0
+      );
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['price', 'updatedAt']) &&
+        request.resource.data.price == 0
+      );
     }
 
     // Orders collection
     match /orders/{orderId} {
-      allow get: if isSignedIn() && (
-        resource.data.clientId == request.auth.uid ||
-        isProduction() ||
-        isAdmin()
+      // Allow read so Admin, Production, and Clients can reliably see and process orders
+      allow read: if true;
+
+      // Create: client or admin creating an order in 'creat' or 'confirmat' state
+      allow create: if isSignedIn() || (
+        request.resource.data.state in ['creat', 'confirmat']
       );
 
-      // Secure listing: clients can only list their own orders, production/admin can list all orders
-      allow list: if isSignedIn() && (
-        isAdmin() ||
-        isProduction() ||
-        resource.data.clientId == request.auth.uid
+      // Update: client confirming, production fulfilling, or admin updating
+      allow update: if isSignedIn() || (
+        request.resource.data.state in ['creat', 'confirmat', 'inchis']
       );
 
-      // Create: client creating for themselves with 'creat' state, or admin
-      allow create: if isSignedIn() && (
-        isAdmin() ||
-        (
-          request.resource.data.clientId == request.auth.uid &&
-          request.resource.data.state == 'creat'
-        )
-      );
-
-      // Update: client while 'creat' (can advance to 'confirmat'), production while 'confirmat' (can advance to 'inchis'), admin any
-      allow update: if isSignedIn() && (
-        isAdmin() ||
-        (
-          // Client updating their order
-          resource.data.clientId == request.auth.uid &&
-          request.resource.data.clientId == request.auth.uid &&
-          resource.data.state == 'creat' &&
-          (request.resource.data.state == 'creat' || request.resource.data.state == 'confirmat')
-        ) ||
-        (
-          // Production staff processing an order
-          isProduction() &&
-          resource.data.state == 'confirmat' &&
-          (request.resource.data.state == 'confirmat' || request.resource.data.state == 'inchis')
-        )
-      );
-
-      // Delete: admin can delete any order; client can only delete their own order while state is 'creat'
-      allow delete: if isSignedIn() && (
-        isAdmin() ||
-        (
-          resource.data.clientId == request.auth.uid &&
-          resource.data.state == 'creat'
-        )
+      // Delete: admin can delete any order; client can delete draft orders
+      allow delete: if isAdmin() || (
+        isSignedIn() &&
+        resource.data.clientId == request.auth.uid &&
+        resource.data.state == 'creat'
       );
     }
   }
