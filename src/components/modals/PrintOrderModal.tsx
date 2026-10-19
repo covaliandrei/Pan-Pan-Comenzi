@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { X, Printer, PackageCheck, Calendar, MapPin, Hash } from 'lucide-react';
 import { Order } from '../../types';
 import { formatDateRomanian } from '../../lib/initialData';
@@ -18,10 +18,16 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const printableAreaRef = useRef<HTMLDivElement>(null);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (err) {
+      console.error('Eroare la apelarea funcției de tipărire:', err);
+    }
   };
 
   const isBatch = !!batchOrders && batchOrders.length > 0;
@@ -35,20 +41,22 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
           <div className="flex items-center space-x-2">
             <Printer className="w-5 h-5 text-amber-400" />
             <h3 className="font-semibold text-base">
-              {isBatch ? `Foaie Producție & Coacere (${formatDateRomanian(batchDate || '')})` : `Tipărire Comandă ${order?.orderNumber}`}
+              {isBatch
+                ? `Foaie Producție pentru livrări (${formatDateRomanian(batchDate || '')})`
+                : `Tipărire Comandă ${order?.orderNumber}`}
             </h3>
           </div>
           <div className="flex items-center space-x-3">
             <button
               onClick={handlePrint}
-              className="flex items-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-medium text-sm rounded-xl transition shadow-xs cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold text-sm rounded-xl transition shadow-xs cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Tipărește</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -56,7 +64,10 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
         </div>
 
         {/* Printable Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible printable-area text-slate-800">
+        <div
+          ref={printableAreaRef}
+          className="flex-1 overflow-y-auto p-8 print:p-0 print:overflow-visible printable-area text-slate-800"
+        >
           {isBatch ? (
             /* BATCH PRINT VIEW FOR PRODUCTION */
             <div>
@@ -64,17 +75,19 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                 <div className="flex justify-between items-start">
                   <div>
                     <h1 className="text-2xl font-black tracking-tight text-slate-950 uppercase">
-                      Pan Pan Comenzi - Brutărie Artizanală
+                      Pan Pan Comenzi
                     </h1>
                     <p className="text-sm text-slate-600 mt-1 font-medium">
-                      Raport & Foaie de Coacere / Livrare Producție
+                      Raport & Foaie Livrare Producție
                     </p>
                   </div>
                   <div className="text-right">
                     <span className="inline-block px-3 py-1 bg-slate-100 text-slate-800 rounded font-semibold text-sm">
                       Data Livrare: {formatDateRomanian(batchDate || '')}
                     </span>
-                    <p className="text-xs text-slate-500 mt-1">Generat la: {new Date().toLocaleString('ro-RO')}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Generat la: {new Date().toLocaleString('ro-RO')}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -83,11 +96,14 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
               <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3 flex items-center gap-2">
                   <PackageCheck className="w-4 h-4 text-amber-600" />
-                  Totaluri Agregate de Copt / Pregătit ({batchOrders?.length} comenzi)
+                  Totaluri Agregate Pregătit ({batchOrders?.length} comenzi)
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {(() => {
-                    const productTotals: Record<string, { name: string; unit: string; totalOrdered: number; totalPicked: number }> = {};
+                    const productTotals: Record<
+                      string,
+                      { name: string; unit: string; totalOrdered: number; totalPicked: number }
+                    > = {};
                     batchOrders?.forEach((o) => {
                       o.items.forEach((item) => {
                         if (!productTotals[item.productId]) {
@@ -99,7 +115,8 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                           };
                         }
                         productTotals[item.productId].totalOrdered += item.orderedQuantity;
-                        productTotals[item.productId].totalPicked += item.pickedQuantity || item.orderedQuantity;
+                        productTotals[item.productId].totalPicked +=
+                          item.pickedQuantity !== undefined ? item.pickedQuantity : item.orderedQuantity;
                       });
                     });
 
@@ -108,9 +125,6 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                         <div className="font-semibold text-slate-900 truncate">{val.name}</div>
                         <div className="text-slate-600 mt-1">
                           Necesar: <span className="font-bold text-slate-900">{val.totalOrdered} {val.unit}</span>
-                          {val.totalPicked !== val.totalOrdered && (
-                            <span className="ml-1 text-emerald-700">| Pregătit: {val.totalPicked} {val.unit}</span>
-                          )}
                         </div>
                       </div>
                     ));
@@ -118,42 +132,44 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                 </div>
               </div>
 
-              {/* Detailed Orders Breakdown */}
-              <h4 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">
-                Detaliu Comenzi per Punct de Lucru
+              {/* Orders breakdown */}
+              <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3">
+                Comenzile Magazinelor / Punctelor de Livrare
               </h4>
-
               <div className="space-y-6">
-                {batchOrders?.map((ord) => (
-                  <div key={ord.id} className="border border-slate-200 rounded-xl p-4 bg-white break-inside-avoid">
-                    <div className="flex justify-between items-start border-b border-slate-200 pb-2 mb-3">
+                {batchOrders?.map((ord, idx) => (
+                  <div key={ord.id} className="border border-slate-200 rounded-xl p-4 bg-white">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
                       <div>
-                        <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded mr-2">
+                        <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs mr-2">
                           {ord.orderNumber}
                         </span>
                         <span className="font-bold text-slate-900 text-sm">{ord.clientName}</span>
                       </div>
-                      <span className="text-xs text-slate-600">
-                        Stare: <span className="font-semibold uppercase">{ord.state}</span>
-                      </span>
+                      <div className="text-right text-xs">
+                        <span className="text-slate-500">Stare: </span>
+                        <span className="font-semibold uppercase text-slate-700">{ord.state}</span>
+                      </div>
                     </div>
 
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 text-slate-500 font-medium">
-                          <th className="py-1">Produs</th>
-                          <th className="py-1 text-center">Unitate</th>
-                          <th className="py-1 text-right">Comandat</th>
-                          <th className="py-1 text-right">Pregătit</th>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                          <th className="py-1.5 px-2">Cod</th>
+                          <th className="py-1.5 px-2">Produs</th>
+                          <th className="py-1.5 px-2 text-center">Unitate</th>
+                          <th className="py-1.5 px-2 text-right">Comandat</th>
+                          <th className="py-1.5 px-2 text-right">Pregătit / Livrat</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {ord.items.map((it, idx) => (
-                          <tr key={idx}>
-                            <td className="py-1 font-medium text-slate-800">{it.productName}</td>
-                            <td className="py-1 text-center text-slate-500">{it.unit}</td>
-                            <td className="py-1 text-right font-semibold text-slate-700">{it.orderedQuantity}</td>
-                            <td className="py-1 text-right font-bold text-slate-950">
+                        {ord.items.map((it, itemIdx) => (
+                          <tr key={itemIdx}>
+                            <td className="py-1 px-2 font-mono text-slate-500">{it.productCode}</td>
+                            <td className="py-1 px-2 font-medium text-slate-800">{it.productName}</td>
+                            <td className="py-1 px-2 text-center text-slate-500">{it.unit}</td>
+                            <td className="py-1 px-2 text-right font-medium text-slate-700">{it.orderedQuantity}</td>
+                            <td className="py-1 px-2 text-right font-bold text-slate-900">
                               {it.pickedQuantity !== undefined ? it.pickedQuantity : it.orderedQuantity}
                             </td>
                           </tr>
@@ -162,27 +178,27 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                     </table>
 
                     {ord.notes && (
-                      <p className="mt-2 text-xs italic text-slate-500 bg-slate-50 p-1.5 rounded">
-                        Notă: {ord.notes}
-                      </p>
+                      <div className="mt-2 text-[11px] text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                        <strong>Notă:</strong> {ord.notes}
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
             </div>
           ) : order ? (
-            /* SINGLE ORDER PRINT VIEW (AVIZ / NOTĂ DE LIVRARE) */
+            /* SINGLE ORDER PRINT VIEW (AVIZ / FACTURĂ PROFORMA) */
             <div>
-              {/* Slip Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-4 mb-6">
+              {/* Header */}
+              <div className="flex justify-between items-start pb-6 border-b-2 border-slate-900 mb-6">
                 <div>
-                  <h1 className="text-2xl font-black tracking-tight text-slate-950 uppercase">
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
                     Pan Pan Comenzi
                   </h1>
                   <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mt-0.5">
-                    Brutărie Artizanală & Panificație
+                    Brutărie & Panificație
                   </p>
-                  <p className="text-xs text-slate-600 mt-1">Tel: 0722 000 111 | comenzi@panpan.ro</p>
+                  <p className="text-xs text-slate-600 mt-1">Tel: 061 030 063 | comenzi@panpan.md</p>
                 </div>
                 <div className="text-right">
                   <div className="inline-block bg-slate-950 text-white px-3 py-1 rounded text-xs font-mono font-bold tracking-wide">
@@ -199,7 +215,7 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                 <div>
                   <h5 className="font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-700" />
-                    Destinatar (Punct de Lucru)
+                    Destinatar (Punct de Livrare)
                   </h5>
                   <p className="text-sm font-bold text-slate-900">{order.clientName}</p>
                   <p className="text-slate-600 mt-0.5">{order.clientEmail}</p>
@@ -255,7 +271,7 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                           <td className="py-2 px-3 text-right text-slate-600 font-medium">{item.orderedQuantity}</td>
                           <td className="py-2 px-3 text-right font-bold text-slate-950">
                             {finalQty}
-                            {item.pickedQuantity !== item.orderedQuantity && (
+                            {item.pickedQuantity !== undefined && item.pickedQuantity !== item.orderedQuantity && (
                               <span className="text-amber-700 text-[10px] ml-1 font-normal">*ajustat</span>
                             )}
                           </td>

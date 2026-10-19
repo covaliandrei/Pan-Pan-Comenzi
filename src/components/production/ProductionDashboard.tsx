@@ -12,6 +12,7 @@ import {
   Filter,
   Check,
   Building2,
+  Lock,
 } from 'lucide-react';
 import { Order } from '../../types';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -23,7 +24,7 @@ import { getLocalOrders } from '../../lib/ordersService';
 import { useAuth } from '../../context/AuthContext';
 
 export const ProductionDashboard: React.FC = () => {
-  const { currentUser, isDemoUser } = useAuth();
+  const { currentUser, isDemoUser, profile, role } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string>(getTomorrowString());
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -122,11 +123,11 @@ export const ProductionDashboard: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-amber-600 font-semibold text-xs tracking-wider uppercase mb-1">
             <Wheat className="w-4 h-4" />
-            <span>Secția Coacere & Ambalare</span>
+            <span>Secția Ambalare</span>
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Panou Producție Brutărie</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Panou Producție Livrări</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Vizualizați comenzile confirmate pentru data selectată, efectuați cântărirea și pregătirea produselor (picking), și tipăriți rapoartele de coacere.
+            Vizualizați comenzile confirmate pentru data selectată, efectuați cântărirea și pregătirea produselor (picking), și tipăriți rapoartele de livrări.
           </p>
         </div>
 
@@ -141,7 +142,7 @@ export const ProductionDashboard: React.FC = () => {
                 selectedDate === todayStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
               }`}
             >
-              Azi ({todayStr})
+              Azi ({formatDateRomanian(todayStr)})
             </button>
             <button
               type="button"
@@ -150,7 +151,7 @@ export const ProductionDashboard: React.FC = () => {
                 selectedDate === tomorrowStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
               }`}
             >
-              Mâine ({tomorrowStr})
+              Mâine ({formatDateRomanian(tomorrowStr)})
             </button>
             <button
               type="button"
@@ -186,7 +187,7 @@ export const ProductionDashboard: React.FC = () => {
             </div>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Necesar Producție & Coacere ({formatDateRomanian(selectedDate)})
+                Necesar Producție & Livrări ({formatDateRomanian(selectedDate)})
               </h3>
               <p className="text-xs text-slate-500">
                 Totaluri centralizate din cele {confirmedCount + closedCount} comenzi confirmate/închise pentru această dată.
@@ -201,7 +202,7 @@ export const ProductionDashboard: React.FC = () => {
               className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto"
             >
               <Printer className="w-4 h-4 text-amber-400" />
-              <span>Tipărește Foaie Zilnică Coacere</span>
+              <span>Tipărește Foaie Zilnică Livrări</span>
             </button>
           )}
         </div>
@@ -302,6 +303,9 @@ export const ProductionDashboard: React.FC = () => {
           {filteredOrders.map((order) => {
             const isConfirmed = order.state === 'confirmat';
             const isClosed = order.state === 'inchis';
+            const currentUserId = currentUser?.uid || profile?.id;
+            const isAssignedToOther = Boolean(order.pickedBy && order.pickedBy !== currentUserId && role !== 'admin');
+            const isAssignedToMe = Boolean(order.pickedBy && order.pickedBy === currentUserId);
 
             return (
               <div
@@ -314,14 +318,14 @@ export const ProductionDashboard: React.FC = () => {
               >
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-3">
-                  <div className="flex items-center space-x-3">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <span className="font-mono text-sm font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
                       {order.orderNumber}
                     </span>
 
                     <div className="flex items-center gap-1.5 text-slate-800 font-bold text-sm">
-                      <Building2 className="w-4 h-4 text-amber-600" />
-                      <span>{order.clientName}</span>
+                      <Building2 className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Destinatar (Punct de Livrare): <strong className="text-slate-900">{order.clientName}</strong></span>
                     </div>
 
                     {isConfirmed && (
@@ -335,11 +339,21 @@ export const ProductionDashboard: React.FC = () => {
                         Închisă & Cântărită
                       </span>
                     )}
+
+                    {order.pickedByName && isConfirmed && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                        <Lock className="w-3 h-3 text-amber-600" />
+                        <span>În lucru: {order.pickedByName}</span>
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center space-x-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-slate-500">
                       Plasată: {formatDateRomanian(order.orderDate)}
+                    </span>
+                    <span className="font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      Livrare: {formatDateRomanian(order.deliveryDate)}
                     </span>
                     <span className="text-base font-black text-slate-950">
                       {order.totalAmount.toFixed(2)} lei
@@ -425,14 +439,24 @@ export const ProductionDashboard: React.FC = () => {
                   </button>
 
                   {isConfirmed && (
-                    <button
-                      type="button"
-                      onClick={() => setOrderToPick(order)}
-                      className="flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
-                    >
-                      <Scale className="w-4 h-4" />
-                      <span>Preluare & Cântărire (Picking)</span>
-                    </button>
+                    isAssignedToOther ? (
+                      <div
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs font-semibold border border-slate-200"
+                        title={`Preluată de operatorul ${order.pickedByName}. Doar acest operator sau administratorul o poate finaliza.`}
+                      >
+                        <Lock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Preluată de {order.pickedByName}</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setOrderToPick(order)}
+                        className="flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                      >
+                        <Scale className="w-4 h-4" />
+                        <span>{isAssignedToMe ? 'Continuă Cântărirea (Picking)' : 'Preluare & Cântărire (Picking)'}</span>
+                      </button>
+                    )
                   )}
 
                   {isClosed && (

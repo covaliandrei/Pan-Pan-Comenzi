@@ -113,3 +113,14 @@ export async function deleteUserAccount(userId: string): Promise<void> {
     // ignore
   }
 }
+
+export async function changeUserPasswordByAdmin(
+  userId: string,
+  newPassword: string
+): Promise<void> {
+  await updateDoc(doc(db, 'users', userId), {
+    tempPassword: newPassword,
+    passwordUpdatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+}

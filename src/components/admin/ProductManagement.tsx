@@ -11,12 +11,14 @@ import {
   Sparkles,
   FileSpreadsheet,
   Coins,
+  Tag,
 } from 'lucide-react';
 import { Product } from '../../types';
 import { collection, onSnapshot, doc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { ProductModal } from '../modals/ProductModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
+import { CategoryManagementModal } from '../modals/CategoryManagementModal';
 import { INITIAL_PRODUCTS } from '../../lib/initialData';
 import { cleanFirestorePayload } from '../../lib/sanitizer';
 
@@ -29,6 +31,7 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
   // Modals
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
 
@@ -160,39 +163,38 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
       )}
 
       {/* Action Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <Package className="w-5 h-5 text-amber-500" />
             Catalog Produse Brutărie ({products.length})
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Gestionați produsele, unitățile de măsură (buc sau kg) și starea de activare. Prețurile pot fi 0 (funcționalul cu preț rămâne pentru viitor).
+            Gestionați produsele, categoriile, unitățile de măsură (buc sau kg) și starea de activare.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {products.length === 0 && (
             <button
               type="button"
               onClick={seedDefaultCatalog}
               disabled={isSeeding}
-              className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer"
+              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>{isSeeding ? 'Se adaugă...' : 'Inițializează Produse Brutărie'}</span>
+              <span>{isSeeding ? 'Se adaugă...' : 'Inițializează Produse'}</span>
             </button>
           )}
 
           <button
             type="button"
-            onClick={handleResetAllPricesToZero}
-            disabled={isResettingPrices}
-            title="Setează toate prețurile produselor la 0 lei în baza de date"
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+            onClick={() => setIsCategoryModalOpen(true)}
+            title="Gestionează categoriile de produse (adăugare, redenumire, ștergere)"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-950 rounded-xl text-xs font-bold transition cursor-pointer border border-amber-300 shadow-xs"
           >
-            <Coins className="w-4 h-4 text-amber-600" />
-            <span>{isResettingPrices ? 'Se actualizează...' : 'Setează prețuri = 0'}</span>
+            <Tag className="w-4 h-4 text-amber-700" />
+            <span>Gestionează Categorii</span>
           </button>
 
           <button
@@ -206,8 +208,19 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
 
           <button
             type="button"
+            onClick={handleResetAllPricesToZero}
+            disabled={isResettingPrices}
+            title="Setează toate prețurile produselor la 0 lei în baza de date"
+            className="inline-flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+          >
+            <Coins className="w-4 h-4 text-amber-600" />
+            <span>{isResettingPrices ? '...' : 'Prețuri = 0'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsAddModalOpen(true)}
-            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Adaugă Produs Nou</span>
@@ -221,32 +234,30 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Căutare după nume produs sau cod SKU..."
+            placeholder="Căutare după denumire produs, cod sau descriere..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-400 outline-hidden"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0 mr-1" />
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition cursor-pointer ${
-                categoryFilter === cat
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-medium focus:bg-white focus:ring-2 focus:ring-amber-400 outline-hidden cursor-pointer"
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c === 'Toate' ? 'Toate Categoriile' : c}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Products Table */}
+      {/* Products Content Container: Mobile Cards (block md:hidden) and Desktop Table (hidden md:block) */}
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-sm">
           Se încarcă catalogul...
@@ -261,7 +272,87 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile Cards (block md:hidden) - Zero horizontal scrolling */}
+          <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
+            {filteredProducts.map((p) => (
+              <div key={p.id} className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 text-xs">
+                      {p.code}
+                    </span>
+                    <h4 className="font-bold text-slate-900 text-sm mt-1">{p.name}</h4>
+                    <span className="text-[11px] font-semibold text-slate-500">{p.category}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(p)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition ${
+                      p.active !== false
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {p.active !== false ? (
+                      <>
+                        <CheckCircle className="w-3 h-3 text-emerald-600" />
+                        <span>Activ</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="w-3 h-3 text-slate-400" />
+                        <span>Inactiv</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {p.description && (
+                  <p className="text-slate-500 text-xs">{p.description}</p>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded font-bold text-[11px] ${
+                        p.unit === 'kg'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-blue-50 text-blue-800 border border-blue-200'
+                      }`}
+                    >
+                      {p.unit}
+                    </span>
+                    <span className="font-black text-slate-900 text-sm">
+                      {p.price.toFixed(2)} lei
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingProduct(p)}
+                      className="px-2.5 py-1 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center gap-1 transition"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>Editează</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProductToDelete(p)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                      title="Șterge produs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table (hidden md:block) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
                 <tr>
@@ -331,7 +422,7 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
                         <button
                           type="button"
                           onClick={() => setEditingProduct(p)}
-                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+                          className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                           title="Editează produs"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -339,7 +430,7 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
                         <button
                           type="button"
                           onClick={() => setProductToDelete(p)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                           title="Șterge produs"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -363,6 +454,13 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
           setEditingProduct(null);
         }}
         onSuccess={() => {}}
+      />
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        products={products}
       />
 
       {/* Delete Product Confirmation */}

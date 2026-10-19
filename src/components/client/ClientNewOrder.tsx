@@ -23,6 +23,7 @@ import {
   INITIAL_PRODUCTS,
   formatDateRomanian,
   DEFAULT_USERS,
+  DEFAULT_CATEGORIES,
 } from '../../lib/initialData';
 import { createOrder } from '../../lib/ordersService';
 
@@ -117,11 +118,35 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
     }
   };
 
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+
   useEffect(() => {
     loadProducts();
+    const fetchCategories = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'categories'));
+        const cats: string[] = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          if (data?.name) cats.push(data.name);
+        });
+        setDbCategories(cats);
+      } catch (err) {
+        console.warn('Eroare încărcare categorii din Firestore:', err);
+      }
+    };
+    fetchCategories();
   }, []);
 
-  const categories = ['Toate', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
+  const categories = React.useMemo(() => {
+    const set = new Set<string>();
+    DEFAULT_CATEGORIES.forEach((c) => set.add(c));
+    dbCategories.forEach((c) => set.add(c));
+    products.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return ['Toate', ...Array.from(set)];
+  }, [dbCategories, products]);
 
   const filteredProducts = products.filter((p) => {
     const matchSearch =
@@ -169,7 +194,7 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
         unit: prod.unit,
         unitPrice: prod.price,
         orderedQuantity: qty,
-        pickedQuantity: qty,
+        pickedQuantity: 0,
         itemTotal: Number((qty * prod.price).toFixed(2)),
       };
     })
@@ -394,21 +419,24 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
               />
             </div>
 
-            {/* Category pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition cursor-pointer ${
-                    selectedCategory === cat
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+            {/* Category pills - wrapped so all tags are fully visible on both mobile and wide screens */}
+            <div className="pt-1 w-full">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs w-full">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl font-bold transition cursor-pointer shrink-0 text-xs ${
+                      selectedCategory === cat
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-amber-100 hover:text-amber-900 border border-slate-200/80'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

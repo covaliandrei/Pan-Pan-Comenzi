@@ -8,7 +8,7 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UserProfile, UserRole } from '../types';
 import { cleanFirestorePayload } from '../lib/sanitizer';
@@ -72,11 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const userRef = doc(db, 'users', user.uid);
           const userSnap = await getDoc(userRef);
 
-          let userRole: UserRole = 'client';
           const isBootstrapAdmin = user.email?.toLowerCase() === ADMIN_BOOTSTRAP_EMAIL.toLowerCase();
+          const userRole: UserRole = isBootstrapAdmin ? 'admin' : 'pending';
 
           if (isBootstrapAdmin) {
-            userRole = 'admin';
             try {
               await setDoc(doc(db, 'admins', user.uid), {
                 email: user.email,
@@ -89,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (userSnap.exists()) {
             const data = userSnap.data() as UserProfile;
-            const finalRole = isBootstrapAdmin ? 'admin' : (data.role || 'client');
+            const finalRole: UserRole = isBootstrapAdmin ? 'admin' : (data.role || 'pending');
             setProfile({
               id: user.uid,
               email: user.email || data.email || '',
@@ -99,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               phone: data.phone || '',
             });
           } else {
-            // New user without Firestore doc yet - create base profile
+            // New user without Firestore doc yet (e.g. Google Sign-In) -> create profile with 'pending' role
             const newProfile: Record<string, any> = {
               id: user.uid,
               email: user.email || '',
@@ -109,9 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               updatedAt: new Date().toISOString(),
             };
 
-            if (userRole === 'client') {
-              newProfile.tradingPointName = user.displayName || 'Punct Vânzare';
-            }
+
 
             await setDoc(userRef, cleanFirestorePayload(newProfile));
             setProfile({
@@ -129,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             id: user.uid,
             email: user.email || '',
             displayName: user.displayName || 'Utilizator',
-            role: user.email?.toLowerCase() === ADMIN_BOOTSTRAP_EMAIL.toLowerCase() ? 'admin' : 'client',
+            role: user.email?.toLowerCase() === ADMIN_BOOTSTRAP_EMAIL.toLowerCase() ? 'admin' : 'pending',
           });
         }
       } else {
@@ -151,6 +148,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithEmailAndPassword(auth, email.trim(), pass);
     } catch (err: any) {
+      // Check if user has an admin-assigned password in Firestore
+      try {
+        const usersRef = collection(db, 'users');
+        const q = query(usersRef, where('email', '==', email.trim()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const userDoc = snap.docs[0];
+          const userData = userDoc.data() as UserProfile;
+          if (userData.tempPassword && userData.tempPassword === pass) {
+            const resolvedProfile: UserProfile = {
+              ...userData,
+              id: userDoc.id,
+            };
+            setProfile(resolvedProfile);
+            setIsDemoUser(true);
+            localStorage.setItem(LOCAL_STORAGE_DEMO_KEY, JSON.stringify(resolvedProfile));
+            return;
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Fallback login check failed:', dbErr);
+      }
+
       if (err?.code === 'auth/operation-not-allowed') {
         throw new Error(
           'Autentificarea cu Email/Parolă nu este încă activată în consola Firebase (Authentication > Sign-in method > Email/Password). Vă rugăm să folosiți butonul "Conectare cu Google" sau "Acces Rapid Demonstrativ" de mai jos.'
@@ -225,32 +245,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Quick demo login that works reliably even if email/password provider is not enabled in Firebase
   const quickDemoLogin = async (targetRole: UserRole) => {
-    const demoProfiles: Record<UserRole, UserProfile> = {
+    const demoProfiles: Record<string, UserProfile> = {
       client: {
         id: 'demo-client-unirii',
-        email: 'magazin.centru@panpan.ro',
+        email: 'magazin.centru@panpan.md',
         displayName: 'Elena - Magazin Unirii',
         role: 'client',
         tradingPointName: 'Punct de lucru Str. Unirii nr. 14',
-        phone: '0722 123 456',
+        phone: '061 030 063',
       },
       production: {
         id: 'demo-prod-seftura',
-        email: 'productie.brutarie@panpan.ro',
-        displayName: 'Mihai - Șef Tură Coacere',
+        email: 'productie.brutarie@panpan.md',
+        displayName: 'Mihai - Șef Tură Producție',
         role: 'production',
-        phone: '0733 987 654',
+        phone: '061 030 063',
       },
       admin: {
         id: 'demo-admin-covali',
         email: ADMIN_BOOTSTRAP_EMAIL,
         displayName: 'Andrei Covali (Manager Brutărie)',
         role: 'admin',
-        phone: '0744 555 888',
+        phone: '061 030 063',
       },
     };
 
     const targetProfile = demoProfiles[targetRole];
+    if (!targetProfile) return;
 
     // Try real Firebase auth first in case user enabled it
     try {

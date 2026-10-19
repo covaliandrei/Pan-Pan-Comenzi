@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? [
           {
             id: 'client-orders',
-            label: 'Comenzile Mele',
+            label: 'Comenzi',
             icon: ShoppingBag,
             badge: null,
             roleRequired: 'client',
@@ -70,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? [
           {
             id: 'production-dashboard',
-            label: 'Panou Producție & Coacere',
+            label: 'Panou Producție Livrări',
             icon: PackageCheck,
             badge: null,
             roleRequired: 'production',

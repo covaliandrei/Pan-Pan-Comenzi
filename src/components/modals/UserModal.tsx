@@ -129,7 +129,7 @@ export const UserModal: React.FC<UserModalProps> = ({
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
               Rol Utilizator *
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={() => setRole('client')}
@@ -140,7 +140,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                 }`}
               >
                 <Store className="w-4 h-4 mx-auto mb-1 text-amber-600" />
-                <span className="text-[11px] block leading-tight">Punct Vânzare</span>
+                <span className="text-[11px] block leading-tight">Punct Livrare</span>
               </button>
 
               <button
@@ -166,7 +166,20 @@ export const UserModal: React.FC<UserModalProps> = ({
                 }`}
               >
                 <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-amber-600" />
-                <span className="text-[11px] block leading-tight">Manager / Admin</span>
+                <span className="text-[11px] block leading-tight">Manager</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole('pending')}
+                className={`p-2.5 rounded-xl border text-center transition cursor-pointer ${
+                  role === 'pending'
+                    ? 'border-rose-500 bg-rose-50 text-rose-950 font-bold shadow-xs'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <AlertCircle className="w-4 h-4 mx-auto mb-1 text-rose-600" />
+                <span className="text-[11px] block leading-tight">Fără Drepturi</span>
               </button>
             </div>
           </div>
@@ -175,7 +188,7 @@ export const UserModal: React.FC<UserModalProps> = ({
           {role === 'client' && (
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Denumire Punct de Lucru / Magazin *
+                Denumire Punct de Livrare / Magazin *
               </label>
               <div className="relative">
                 <Store className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />

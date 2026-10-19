@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, Calendar, AlertCircle, ShoppingBag, ShieldCheck } from 'lucide-react';
-import { Order, OrderItem, OrderState, Product } from '../../types';
+import { X, Save, Plus, Trash2, Calendar, AlertCircle, ShoppingBag, ShieldCheck, UserCheck } from 'lucide-react';
+import { Order, OrderItem, OrderState, Product, UserProfile } from '../../types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { getTodayString } from '../../lib/initialData';
@@ -32,12 +32,19 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Picker reassignment for Admin
+  const [productionStaff, setProductionStaff] = useState<UserProfile[]>([]);
+  const [pickerId, setPickerId] = useState<string>('');
+  const [pickerName, setPickerName] = useState<string>('');
+
   useEffect(() => {
     if (order) {
       setDeliveryDate(order.deliveryDate);
       setOrderState(order.state || 'creat');
       setItems([...order.items]);
       setNotes(order.notes || '');
+      setPickerId(order.pickedBy || '');
+      setPickerName(order.pickedByName || '');
       setErrorMsg('');
     }
   }, [order]);
@@ -60,8 +67,27 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         }
       };
       fetchProducts();
+
+      if (isAdmin) {
+        const fetchStaff = async () => {
+          try {
+            const snap = await getDocs(collection(db, 'users'));
+            const staff: UserProfile[] = [];
+            snap.forEach((d) => {
+              const u = { ...d.data(), id: d.id } as UserProfile;
+              if (u.role === 'production' || u.role === 'admin') {
+                staff.push(u);
+              }
+            });
+            setProductionStaff(staff);
+          } catch {
+            // ignore
+          }
+        };
+        fetchStaff();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, isAdmin]);
 
   if (!isOpen || !order) return null;
 
@@ -100,7 +126,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         unit: prod.unit,
         unitPrice: prod.price,
         orderedQuantity: defaultQty,
-        pickedQuantity: defaultQty,
+        pickedQuantity: 0,
         itemTotal: Number((defaultQty * prod.price).toFixed(2)),
       };
       setItems([...items, newItem]);
@@ -146,6 +172,16 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         updatedAt: new Date().toISOString(),
       };
 
+      if (isAdmin) {
+        if (pickerId) {
+          updatePayload.pickedBy = pickerId;
+          updatePayload.pickedByName = pickerName || 'Personal Producție';
+        } else {
+          updatePayload.pickedBy = null;
+          updatePayload.pickedByName = null;
+        }
+      }
+
       await updateOrder(order.id, updatePayload);
       onSuccess();
       onClose();
@@ -158,10 +194,10 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
+        <div className="flex items-center justify-between px-5 py-4 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex items-center space-x-3">
             <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-2xl">
               <ShoppingBag className="w-5 h-5" />
@@ -176,7 +212,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Client: <span className="text-white font-medium">{order.clientName}</span> ({order.clientEmail})
+                Destinatar: <span className="text-white font-medium">{order.clientName}</span> ({order.clientEmail})
               </p>
             </div>
           </div>
@@ -189,7 +225,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 space-y-4">
           {errorMsg && (
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -198,9 +234,9 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
           )}
 
           {/* Delivery Date & Order State Pickers */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {/* Delivery Date */}
-            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl">
+            <div className="bg-slate-50 border border-slate-200/90 p-3.5 rounded-2xl">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-amber-600" />
                 Data de Livrare
@@ -218,7 +254,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
             </div>
 
             {/* State Picker */}
-            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl">
+            <div className="bg-slate-50 border border-slate-200/90 p-3.5 rounded-2xl">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-amber-600" />
                 Stare Comandă
@@ -239,43 +275,75 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
             </div>
           </div>
 
+          {/* Admin Picker Assignment */}
+          {isAdmin && (
+            <div className="bg-slate-50 border border-slate-200/90 p-3.5 rounded-2xl">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-blue-600" />
+                Personal Producție / Picker Alocat
+              </label>
+              <select
+                value={pickerId}
+                onChange={(e) => {
+                  const pId = e.target.value;
+                  setPickerId(pId);
+                  const found = productionStaff.find((s) => s.id === pId);
+                  setPickerName(found ? found.displayName || found.email : '');
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400 cursor-pointer"
+              >
+                <option value="">-- Nealocat / Oricine din producție --</option>
+                {productionStaff.map((staff) => (
+                  <option key={staff.id} value={staff.id}>
+                    {staff.displayName} ({staff.email})
+                  </option>
+                ))}
+              </select>
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                Administratorul poate reasigna comanda către un alt operator din producție.
+              </span>
+            </div>
+          )}
+
           {/* Items List */}
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Produse Comandate ({items.length})
               </h4>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl gap-3"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl gap-2.5 w-full min-w-0"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                      <span className="font-mono text-xs text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
                         {item.productCode}
                       </span>
-                      <span className="font-semibold text-sm text-slate-900 truncate">{item.productName}</span>
+                      <span className="font-semibold text-xs sm:text-sm text-slate-900 truncate">
+                        {item.productName}
+                      </span>
                     </div>
                     <span className="text-xs text-slate-500 mt-0.5 block">
                       {item.unitPrice.toFixed(2)} lei / {item.unit}
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                     <input
                       type="number"
                       min="0.1"
                       step={item.unit === 'kg' ? '0.1' : '1'}
                       value={item.orderedQuantity}
                       onChange={(e) => handleQuantityChange(idx, parseFloat(e.target.value))}
-                      className="w-20 text-center px-2 py-1 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+                      className="w-18 sm:w-20 text-center px-2 py-1 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
                     />
-                    <span className="text-xs font-semibold text-slate-600 w-8">{item.unit}</span>
-                    <span className="text-xs font-bold text-slate-800 w-20 text-right">
+                    <span className="text-xs font-semibold text-slate-600 w-7">{item.unit}</span>
+                    <span className="text-xs font-bold text-slate-800 w-18 text-right">
                       {item.itemTotal.toFixed(2)} lei
                     </span>
                     <button
@@ -291,13 +359,13 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               ))}
             </div>
 
-            {/* Add product select */}
+            {/* Add product select - mobile friendly */}
             {availableProducts.length > 0 && (
-              <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
+              <div className="mt-3.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full min-w-0">
                 <select
                   value={selectedProductToAdd}
                   onChange={(e) => setSelectedProductToAdd(e.target.value)}
-                  className="flex-1 text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+                  className="w-full sm:flex-1 text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400 min-w-0 truncate"
                 >
                   <option value="">-- Adaugă un alt produs din catalog --</option>
                   {availableProducts.map((p) => (
@@ -310,7 +378,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                   type="button"
                   onClick={handleAddProduct}
                   disabled={!selectedProductToAdd}
-                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Adaugă</span>
@@ -321,7 +389,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
               Observații / Mențiuni de livrare
             </label>
             <textarea
@@ -329,19 +397,19 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Instrucțiuni speciale pentru brutărie sau livrare..."
-              className="w-full text-xs p-3 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-400 outline-hidden"
+              className="w-full text-xs p-3 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-400 outline-hidden bg-slate-50"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 bg-slate-50 border-t border-slate-200 gap-3">
           <div>
             <span className="text-xs text-slate-500 block">Total comandă:</span>
-            <span className="text-lg font-black text-slate-900">{totalAmount.toFixed(2)} lei</span>
+            <span className="text-base font-black text-slate-900">{totalAmount.toFixed(2)} lei</span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end w-full sm:w-auto">
             <button
               type="button"
               onClick={onClose}

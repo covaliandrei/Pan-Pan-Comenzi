@@ -123,19 +123,35 @@ export function getTomorrowString(): string {
   return d.toISOString().split('T')[0];
 }
 
-export function formatDateRomanian(dateStr: string): string {
+export function formatDateDDMMYYYY(dateStr: string): string {
   if (!dateStr) return '';
   try {
-    const [year, month, day] = dateStr.split('-');
-    const months = [
-      'Ianuarie', 'Februarie', 'Martie', 'Aprilie', 'Mai', 'Iunie',
-      'Iulie', 'August', 'Septembrie', 'Octombrie', 'Noiembrie', 'Decembrie'
-    ];
-    return `${day} ${months[parseInt(month, 10) - 1]} ${year}`;
+    const raw = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const parts = raw.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      if (year.length === 4) {
+        return `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`;
+      }
+    }
+    return dateStr;
   } catch {
     return dateStr;
   }
 }
+
+export function formatDateRomanian(dateStr: string): string {
+  return formatDateDDMMYYYY(dateStr);
+}
+
+export const DEFAULT_CATEGORIES: string[] = [
+  'Pâine Artizanală',
+  'Pâine la Kilogram',
+  'Specialități',
+  'Patiserie Tradițională',
+  'Cozonaci & Plăcinte',
+  'Chifle & Panificație',
+];
 
 export const DEFAULT_USERS: UserProfile[] = [
   {
@@ -157,15 +173,15 @@ export const DEFAULT_USERS: UserProfile[] = [
   },
   {
     id: 'user-prod-seftura',
-    email: 'productie.brutarie@panpan.ro',
-    displayName: 'Mihai - Șef Tură Coacere',
+    email: 'productie.brutarie@panpan.md',
+    displayName: 'Mihai - Șef Tură Producție',
     role: 'production',
     phone: '0733 987 654',
     createdAt: '2026-10-17T18:00:00.000Z',
   },
   {
     id: 'user-unirii-client',
-    email: 'magazin.centru@panpan.ro',
+    email: 'magazin.centru@panpan.md',
     displayName: 'Elena Popescu',
     tradingPointName: 'Magazin Central Unirii',
     role: 'client',

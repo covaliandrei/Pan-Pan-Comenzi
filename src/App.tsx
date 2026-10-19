@@ -6,10 +6,11 @@ import { ClientOrdersList } from './components/client/ClientOrdersList';
 import { ClientNewOrder } from './components/client/ClientNewOrder';
 import { ProductionDashboard } from './components/production/ProductionDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
+import { PendingApprovalPage } from './components/auth/PendingApprovalPage';
 import { Menu, Wheat, Loader2 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
-  const { currentUser, isDemoUser, loading, activeRole } = useAuth();
+  const { currentUser, isDemoUser, loading, activeRole, profile } = useAuth();
   const [currentView, setCurrentView] = useState<string>('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
@@ -40,6 +41,10 @@ const AppContent: React.FC = () => {
 
   if (!currentUser && !isDemoUser) {
     return <LoginPage />;
+  }
+
+  if (profile?.role === 'pending') {
+    return <PendingApprovalPage />;
   }
 
   return (

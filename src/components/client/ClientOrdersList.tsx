@@ -13,12 +13,13 @@ import {
   Send,
   AlertCircle,
   FileCheck,
+  Store,
 } from 'lucide-react';
 import { Order } from '../../types';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { formatDateRomanian } from '../../lib/initialData';
+import { formatDateRomanian, getTodayString, getTomorrowString } from '../../lib/initialData';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { EditOrderModal } from '../modals/EditOrderModal';
 import { PrintOrderModal } from '../modals/PrintOrderModal';
@@ -30,6 +31,10 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [stateFilter, setStateFilter] = useState<string>('toate');
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
+
+  const todayStr = getTodayString();
+  const tomorrowStr = getTomorrowString();
 
   // Modal states
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -112,7 +117,8 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
       o.items.some((it) => it.productName.toLowerCase().includes(search.toLowerCase()));
 
     const matchState = stateFilter === 'toate' || o.state === stateFilter;
-    return matchSearch && matchState;
+    const matchDate = selectedDate === 'toate' || o.deliveryDate === selectedDate;
+    return matchSearch && matchState && matchDate;
   });
 
   const getStatusBadge = (state: string) => {
@@ -152,9 +158,9 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
       {/* Top Banner */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Comenzile Mele</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Comenzi</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Urmăriți stadiul comenzilor plasate de punctul dvs. de lucru, confirmați-le pentru producție sau editați-le înainte de confirmare.
+            Urmăriți stadiul comenzilor plasate de punctul dvs. de livrare, confirmați-le pentru producție sau editați-le înainte de confirmare.
           </p>
         </div>
 
@@ -168,13 +174,60 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Date Filter Controls - Default Today */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+          <span className="text-xs font-bold text-slate-700">Filtrare după data livrării:</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-700">
+            <button
+              type="button"
+              onClick={() => setSelectedDate(todayStr)}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                selectedDate === todayStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
+              }`}
+            >
+              Azi ({formatDateRomanian(todayStr)})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(tomorrowStr)}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                selectedDate === tomorrowStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
+              }`}
+            >
+              Mâine ({formatDateRomanian(tomorrowStr)})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate('toate')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                selectedDate === 'toate' ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
+              }`}
+            >
+              Toate Datele
+            </button>
+          </div>
+
+          <input
+            type="date"
+            value={selectedDate === 'toate' ? '' : selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value || 'toate')}
+            className="text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 focus:ring-2 focus:ring-amber-400 outline-hidden"
+          />
+        </div>
+      </div>
+
+      {/* State & Search Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Căutare după număr comandă (ex: CMD-20261018), produs sau notă..."
+            placeholder="Căutare după număr comandă (ex: CMD-20261018), magazin, produs sau notă..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-amber-400 outline-hidden"
@@ -280,8 +333,21 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
                   </div>
                 </div>
 
+                {/* Client / Destinatar Info */}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700 bg-slate-50/80 px-3.5 py-2 rounded-xl border border-slate-200/60 my-3">
+                  <Store className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="text-slate-500 font-semibold">Destinatar (Punct de Livrare):</span>
+                  <span className="font-bold text-slate-900">{order.clientName}</span>
+                  {order.clientEmail && <span className="text-slate-400 font-mono text-[11px]">({order.clientEmail})</span>}
+                  {order.pickedByName && (
+                    <span className="ml-auto text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                      Picker: {order.pickedByName}
+                    </span>
+                  )}
+                </div>
+
                 {/* Items preview */}
-                <div className="py-3">
+                <div className="py-2">
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wider">
                     <span>Articole comandate ({order.items.length})</span>
                     {order.state === 'inchis' && <span className="text-emerald-700 font-bold">*Cantități finale cântărite la livrare</span>}

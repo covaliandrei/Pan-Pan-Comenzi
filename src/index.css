@@ -1,25 +1,52 @@
 @import "tailwindcss";
 
-@layer utilities {
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    .printable-area, .printable-area * {
-      visibility: visible;
-    }
-    .printable-area {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      margin: 0;
-      padding: 1.5rem !important;
-      background: white !important;
-      color: black !important;
-    }
-    .no-print {
-      display: none !important;
-    }
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Hide everything except printable area */
+  body * {
+    visibility: hidden;
+  }
+
+  .no-print, header, aside, nav, button {
+    display: none !important;
+  }
+
+  /* Make modal container static and unconstrained */
+  .fixed, [class*="fixed"], [class*="backdrop-blur"] {
+    position: static !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .printable-area, .printable-area * {
+    visibility: visible !important;
+  }
+
+  .printable-area {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.5rem !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
   }
 }

@@ -13,15 +13,17 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle,
+  KeyRound,
+  Clock,
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { UserProfile, UserRole } from '../../types';
 import { UserModal } from '../modals/UserModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
+import { ChangePasswordModal } from '../modals/ChangePasswordModal';
 import { deleteUserAccount } from '../../lib/userService';
-
-import { DEFAULT_USERS } from '../../lib/initialData';
+import { DEFAULT_USERS, formatDateDDMMYYYY } from '../../lib/initialData';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -32,6 +34,7 @@ export const UserManagement: React.FC = () => {
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [passwordUser, setPasswordUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -46,8 +49,12 @@ export const UserManagement: React.FC = () => {
         snapshot.forEach((docSnap) => {
           list.push({ ...docSnap.data(), id: docSnap.id } as UserProfile);
         });
-        list.sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
-        setUsers(list.length > 0 ? list : DEFAULT_USERS);
+        const mergedMap = new Map<string, UserProfile>();
+        DEFAULT_USERS.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
+        list.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
+        const mergedList = Array.from(mergedMap.values());
+        mergedList.sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
+        setUsers(mergedList);
         setLoading(false);
       },
       (error) => {
@@ -96,6 +103,7 @@ export const UserManagement: React.FC = () => {
   const countClients = users.filter((u) => u.role === 'client').length;
   const countProduction = users.filter((u) => u.role === 'production').length;
   const countAdmins = users.filter((u) => u.role === 'admin').length;
+  const countPending = users.filter((u) => u.role === 'pending').length;
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
@@ -113,12 +121,19 @@ export const UserManagement: React.FC = () => {
             <span>Producție</span>
           </span>
         );
+      case 'pending':
+        return (
+          <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-300 rounded-lg text-xs font-bold">
+            <Clock className="w-3.5 h-3.5 text-rose-600" />
+            <span>Fără Drepturi / În așteptare</span>
+          </span>
+        );
       case 'client':
       default:
         return (
           <span className="inline-flex items-center space-x-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200/80 rounded-lg text-xs font-bold">
             <Store className="w-3.5 h-3.5 text-blue-600" />
-            <span>Punct Vânzare</span>
+            <span>Punct de Livrare</span>
           </span>
         );
     }
@@ -154,14 +169,14 @@ export const UserManagement: React.FC = () => {
       )}
 
       {/* Header and Add Button */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <Users className="w-5 h-5 text-amber-500" />
-            Gestiune Utilizatori & Puncte de Desfacere ({users.length})
+            Gestiune Utilizatori & Puncte de Livrare ({users.length})
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            Administrați conturile de acces pentru magazine, personalul de la coacere/producție și conducerea brutăriei.
+            Administrați conturile de acces pentru magazine, personalul de la producție/livrări și manageri.
           </p>
         </div>
 
@@ -180,13 +195,13 @@ export const UserManagement: React.FC = () => {
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Conturi</div>
           <div className="text-2xl font-black text-slate-950 mt-1">{users.length}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">utilizatori activi</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">utilizatori înregistrați</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1">
             <Store className="w-3.5 h-3.5" />
-            <span>Magazine / Puncte</span>
+            <span>Puncte de Livrare</span>
           </div>
           <div className="text-2xl font-black text-slate-950 mt-1">{countClients}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">emit comenzi</div>
@@ -198,21 +213,23 @@ export const UserManagement: React.FC = () => {
             <span>Producție</span>
           </div>
           <div className="text-2xl font-black text-slate-950 mt-1">{countProduction}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">pregătire & coacere</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">pregătire & livrări</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="text-xs font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Conducere</span>
+            <span>Manageri</span>
           </div>
           <div className="text-2xl font-black text-slate-950 mt-1">{countAdmins}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">acces administrativ</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            {countPending > 0 ? `${countPending} în așteptare` : 'acces complet'}
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search */}
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -226,11 +243,11 @@ export const UserManagement: React.FC = () => {
         </div>
 
         {/* Role tabs */}
-        <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600 w-full md:w-auto overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold text-slate-600">
           <button
             type="button"
             onClick={() => setRoleFilter('toate')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               roleFilter === 'toate' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
             }`}
           >
@@ -239,16 +256,16 @@ export const UserManagement: React.FC = () => {
           <button
             type="button"
             onClick={() => setRoleFilter('client')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               roleFilter === 'client' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
             }`}
           >
-            Puncte Vânzare ({countClients})
+            Puncte Livrare ({countClients})
           </button>
           <button
             type="button"
             onClick={() => setRoleFilter('production')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               roleFilter === 'production' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
             }`}
           >
@@ -257,16 +274,27 @@ export const UserManagement: React.FC = () => {
           <button
             type="button"
             onClick={() => setRoleFilter('admin')}
-            className={`px-3 py-1.5 rounded-lg transition cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
               roleFilter === 'admin' ? 'bg-white text-slate-900 shadow-xs' : 'hover:text-slate-900'
             }`}
           >
             Manageri ({countAdmins})
           </button>
+          {countPending > 0 && (
+            <button
+              type="button"
+              onClick={() => setRoleFilter('pending')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-rose-700 ${
+                roleFilter === 'pending' ? 'bg-white text-rose-800 shadow-xs' : 'hover:text-rose-900'
+              }`}
+            >
+              În Așteptare ({countPending})
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Users Content Container: Responsive Cards on Mobile, Table on Desktop */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-slate-400 text-xs font-medium">
@@ -277,89 +305,182 @@ export const UserManagement: React.FC = () => {
             Nu a fost găsit niciun utilizator conform filtrelor selectate.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3.5 px-4">Utilizator & Punct de Lucru</th>
-                  <th className="py-3.5 px-4">Rol</th>
-                  <th className="py-3.5 px-4">Date Contact</th>
-                  <th className="py-3.5 px-4">Înregistrat</th>
-                  <th className="py-3.5 px-4 text-right">Acțiuni</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/60 transition">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-black flex items-center justify-center shrink-0 uppercase">
-                          {u.displayName?.[0] || u.email[0]}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-900 text-sm">
-                            {u.tradingPointName ? u.tradingPointName : u.displayName}
-                          </div>
-                          {u.tradingPointName && (
-                            <div className="text-[11px] text-slate-500 font-medium">
-                              Reprezentant: {u.displayName}
-                            </div>
-                          )}
-                        </div>
+          <>
+            {/* Mobile Card View (block md:hidden) - Zero horizontal scrolling on small screens */}
+            <div className="block md:hidden divide-y divide-slate-100 p-3 space-y-3">
+              {filteredUsers.map((u) => (
+                <div key={u.id} className="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-900 font-black flex items-center justify-center shrink-0 uppercase text-xs">
+                        {u.displayName?.[0] || u.email[0]}
                       </div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      {getRoleBadge(u.role)}
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-1.5 text-slate-700 font-medium">
-                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate max-w-[200px]">{u.email}</span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 text-xs truncate">
+                          {u.tradingPointName ? u.tradingPointName : u.displayName}
                         </div>
-                        {u.phone && (
-                          <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
-                            <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                            <span>{u.phone}</span>
+                        {u.tradingPointName && (
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {u.displayName}
                           </div>
                         )}
                       </div>
-                    </td>
+                    </div>
+                    <div>{getRoleBadge(u.role)}</div>
+                  </div>
 
-                    <td className="py-3.5 px-4 text-slate-500">
+                  <div className="space-y-1 text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/60">
+                    <div className="flex items-center space-x-1.5 truncate">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="truncate font-mono text-[11px]">{u.email}</span>
+                    </div>
+                    {u.phone && (
                       <div className="flex items-center space-x-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{u.createdAt ? u.createdAt.split('T')[0] : '-'}</span>
+                        <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="text-[11px]">{u.phone}</span>
                       </div>
-                    </td>
+                    )}
+                    <div className="flex items-center space-x-1.5 text-slate-400 text-[10px] pt-1">
+                      <Calendar className="w-3 h-3" />
+                      <span>Înregistrat: {formatDateDDMMYYYY(u.createdAt || '') || '-'}</span>
+                    </div>
+                    {u.tempPassword && (
+                      <div className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded mt-1">
+                        Parolă setată: <span className="font-mono">{u.tempPassword}</span>
+                      </div>
+                    )}
+                  </div>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditingUser(u)}
-                          title="Editează utilizator"
-                          className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setUserToDelete(u)}
-                          title="Șterge utilizator"
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                  {/* Actions */}
+                  <div className="flex items-center justify-end space-x-2 pt-1 border-t border-slate-200/60">
+                    <button
+                      type="button"
+                      onClick={() => setPasswordUser(u)}
+                      className="px-2.5 py-1 text-[11px] font-bold text-amber-800 bg-amber-100/70 hover:bg-amber-200 rounded-lg flex items-center gap-1 transition"
+                      title="Schimbă parola utilizatorului"
+                    >
+                      <KeyRound className="w-3 h-3" />
+                      <span>Parolă</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingUser(u)}
+                      className="px-2.5 py-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg flex items-center gap-1 transition"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span>Editează</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUserToDelete(u)}
+                      className="px-2.5 py-1 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg flex items-center gap-1 transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Șterge</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4">Utilizator & Punct de Livrare</th>
+                    <th className="py-3.5 px-4">Rol</th>
+                    <th className="py-3.5 px-4">Date Contact</th>
+                    <th className="py-3.5 px-4">Înregistrat</th>
+                    <th className="py-3.5 px-4 text-right">Acțiuni</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/60 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 font-black flex items-center justify-center shrink-0 uppercase">
+                            {u.displayName?.[0] || u.email[0]}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 text-sm">
+                              {u.tradingPointName ? u.tradingPointName : u.displayName}
+                            </div>
+                            {u.tradingPointName && (
+                              <div className="text-[11px] text-slate-500 font-medium">
+                                Reprezentant: {u.displayName}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        {getRoleBadge(u.role)}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center space-x-1.5 text-slate-700 font-medium">
+                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-[200px]">{u.email}</span>
+                          </div>
+                          {u.phone && (
+                            <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
+                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{u.phone}</span>
+                            </div>
+                          )}
+                          {u.tempPassword && (
+                            <div className="text-[10px] text-amber-700 font-semibold font-mono">
+                              Parolă: {u.tempPassword}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-slate-500">
+                        <div className="flex items-center space-x-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{formatDateDDMMYYYY(u.createdAt || '') || '-'}</span>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end space-x-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPasswordUser(u)}
+                            title="Schimbă parola utilizatorului"
+                            className="p-1.5 text-amber-700 hover:text-amber-900 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser(u)}
+                            title="Editează utilizator"
+                            className="p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setUserToDelete(u)}
+                            title="Șterge utilizator"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
@@ -388,6 +509,22 @@ export const UserManagement: React.FC = () => {
               text: 'Datele utilizatorului au fost actualizate cu succes.',
             });
             setTimeout(() => setFeedbackMsg(null), 4000);
+          }}
+        />
+      )}
+
+      {/* Change Password Modal */}
+      {passwordUser && (
+        <ChangePasswordModal
+          isOpen={Boolean(passwordUser)}
+          user={passwordUser}
+          onClose={() => setPasswordUser(null)}
+          onSuccess={(newPass) => {
+            setFeedbackMsg({
+              type: 'success',
+              text: `Parola pentru "${passwordUser.displayName || passwordUser.email}" a fost actualizată: ${newPass}`,
+            });
+            setTimeout(() => setFeedbackMsg(null), 5000);
           }}
         />
       )}

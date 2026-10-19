@@ -1,8 +1,14 @@
-export type UserRole = 'client' | 'production' | 'admin';
+export type UserRole = 'client' | 'production' | 'admin' | 'pending';
 
 export type ProductUnit = 'buc' | 'kg';
 
 export type OrderState = 'creat' | 'confirmat' | 'inchis';
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+  createdAt?: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -11,6 +17,8 @@ export interface UserProfile {
   role: UserRole;
   tradingPointName?: string;
   phone?: string;
+  tempPassword?: string;
+  passwordUpdatedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }

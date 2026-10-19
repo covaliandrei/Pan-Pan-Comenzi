@@ -22,7 +22,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
     orderNumber: 'CMD-20261018-742',
     clientId: 'demo-client-unirii',
     clientName: 'Magazin Central Unirii',
-    clientEmail: 'magazin.centru@panpan.ro',
+    clientEmail: 'magazin.centru@panpan.md',
     orderDate: '2026-10-17',
     deliveryDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     state: 'confirmat',
@@ -34,7 +34,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
         unit: 'buc',
         unitPrice: 9.5,
         orderedQuantity: 25,
-        pickedQuantity: 25,
+        pickedQuantity: 0,
         itemTotal: 237.5,
       },
       {
@@ -44,7 +44,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
         unit: 'buc',
         unitPrice: 5.0,
         orderedQuantity: 15,
-        pickedQuantity: 15,
+        pickedQuantity: 0,
         itemTotal: 75.0,
       },
       {
@@ -54,7 +54,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
         unit: 'kg',
         unitPrice: 65.0,
         orderedQuantity: 4.5,
-        pickedQuantity: 4.5,
+        pickedQuantity: 0,
         itemTotal: 292.5,
       },
     ],
@@ -68,7 +68,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
     orderNumber: 'CMD-20261018-815',
     clientId: 'demo-client-unirii',
     clientName: 'Magazin Central Unirii',
-    clientEmail: 'magazin.centru@panpan.ro',
+    clientEmail: 'magazin.centru@panpan.md',
     orderDate: '2026-10-17',
     deliveryDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     state: 'creat',
@@ -80,7 +80,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
         unit: 'buc',
         unitPrice: 6.5,
         orderedQuantity: 20,
-        pickedQuantity: 20,
+        pickedQuantity: 0,
         itemTotal: 130.0,
       },
       {
@@ -90,7 +90,7 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
         unit: 'kg',
         unitPrice: 42.0,
         orderedQuantity: 3.0,
-        pickedQuantity: 3.0,
+        pickedQuantity: 0,
         itemTotal: 126.0,
       },
     ],
@@ -108,7 +108,11 @@ export function getLocalOrders(): Order[] {
       localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(DEFAULT_DEMO_ORDERS));
       return DEFAULT_DEMO_ORDERS;
     }
-    return JSON.parse(raw);
+    const parsed: Order[] = JSON.parse(raw);
+    return parsed.map((o) => ({
+      ...o,
+      clientEmail: o.clientEmail ? o.clientEmail.replace(/panpan\.ro/g, 'panpan.md') : o.clientEmail,
+    }));
   } catch {
     return DEFAULT_DEMO_ORDERS;
   }
