@@ -17,6 +17,8 @@ import {
   Coins,
   ArrowUpDown,
   Wheat,
+  Users,
+  Edit,
 } from 'lucide-react';
 import { Order, UserProfile } from '../../types';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -24,17 +26,19 @@ import { db } from '../../lib/firebase';
 import { formatDateRomanian } from '../../lib/initialData';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { PrintOrderModal } from '../modals/PrintOrderModal';
+import { EditOrderModal } from '../modals/EditOrderModal';
 import { ProductManagement } from './ProductManagement';
 import { CsvProductImport } from './CsvProductImport';
+import { UserManagement } from './UserManagement';
 import { useAuth } from '../../context/AuthContext';
-import { getLocalOrders, updateOrder, deleteOrder, syncLocalOrdersToFirestore } from '../../lib/ordersService';
+import { getLocalOrders, updateOrder, deleteOrder } from '../../lib/ordersService';
 
 export const AdminDashboard: React.FC<{
   onSwitchToClient: () => void;
   onSwitchToProduction: () => void;
 }> = ({ onSwitchToClient, onSwitchToProduction }) => {
   const { profile, currentUser, isDemoUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'csv'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'users' | 'csv'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
@@ -44,6 +48,7 @@ export const AdminDashboard: React.FC<{
   // Modals
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
   const [orderToPrint, setOrderToPrint] = useState<Order | null>(null);
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null);
 
   const loadLocalFallback = () => {
     const list = getLocalOrders();
@@ -53,9 +58,6 @@ export const AdminDashboard: React.FC<{
   };
 
   useEffect(() => {
-    // Sync any pending offline orders
-    syncLocalOrdersToFirestore().catch(() => {});
-
     setLoadingOrders(true);
     const unsubscribe = onSnapshot(
       collection(db, 'orders'),
@@ -65,14 +67,7 @@ export const AdminDashboard: React.FC<{
           list.push({ ...d.data(), id: d.id } as Order);
         });
         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        // If Firestore has orders, display all of them
-        if (list.length > 0) {
-          setOrders(list);
-        } else if (isDemoUser) {
-          setOrders(getLocalOrders());
-        } else {
-          setOrders([]);
-        }
+        setOrders(list);
         setLoadingOrders(false);
       },
       (error) => {
@@ -82,7 +77,7 @@ export const AdminDashboard: React.FC<{
     );
 
     return () => unsubscribe();
-  }, [isDemoUser]);
+  }, []);
 
   const handleDeleteOrder = async (order: Order) => {
     try {
@@ -227,6 +222,19 @@ export const AdminDashboard: React.FC<{
           }`}
         >
           Catalog Produse Brutărie
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('users')}
+          className={`pb-3 px-4 text-sm font-bold border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'users'
+              ? 'border-amber-500 text-slate-900'
+              : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Utilizatori & Magazine</span>
         </button>
 
         <button
@@ -384,10 +392,20 @@ export const AdminDashboard: React.FC<{
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
+                            {/* Manager can edit any order in any state */}
+                            <button
+                              type="button"
+                              onClick={() => setOrderToEdit(ord)}
+                              className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                              title="Editează comanda (dată livrare, produse, cantități, stare)"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => setOrderToPrint(ord)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition cursor-pointer"
                               title="Tipărește aviz"
                             >
                               <Printer className="w-3.5 h-3.5" />
@@ -419,7 +437,10 @@ export const AdminDashboard: React.FC<{
         <ProductManagement onOpenCsvImport={() => setActiveTab('csv')} />
       )}
 
-      {/* Tab 3: CSV Import */}
+      {/* Tab 3: Users & Stores Management */}
+      {activeTab === 'users' && <UserManagement />}
+
+      {/* Tab 4: CSV Import */}
       {activeTab === 'csv' && (
         <CsvProductImport
           onSuccess={() => setActiveTab('products')}
@@ -444,6 +465,14 @@ export const AdminDashboard: React.FC<{
         order={orderToPrint}
         isOpen={!!orderToPrint}
         onClose={() => setOrderToPrint(null)}
+      />
+
+      {/* Edit Order Modal */}
+      <EditOrderModal
+        order={orderToEdit}
+        isOpen={!!orderToEdit}
+        onClose={() => setOrderToEdit(null)}
+        onSuccess={() => setOrderToEdit(null)}
       />
     </div>
   );

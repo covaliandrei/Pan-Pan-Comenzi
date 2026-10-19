@@ -11,12 +11,19 @@ import {
   FileText,
   Wheat,
   Scale,
+  Store,
 } from 'lucide-react';
-import { Product, OrderItem, Order } from '../../types';
+import { Product, OrderItem, Order, UserProfile } from '../../types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
-import { getTodayString, getTomorrowString, INITIAL_PRODUCTS, formatDateRomanian } from '../../lib/initialData';
+import {
+  getTodayString,
+  getTomorrowString,
+  INITIAL_PRODUCTS,
+  formatDateRomanian,
+  DEFAULT_USERS,
+} from '../../lib/initialData';
 import { createOrder } from '../../lib/ordersService';
 
 interface ClientNewOrderProps {
@@ -24,7 +31,9 @@ interface ClientNewOrderProps {
 }
 
 export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }) => {
-  const { currentUser, profile } = useAuth();
+  const { currentUser, profile, role } = useAuth();
+  const isAdmin = role === 'admin';
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -35,7 +44,51 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Client selection for admin
+  const [clients, setClients] = useState<UserProfile[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+
   const minDate = getTodayString();
+
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchClients = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'users'));
+          const list: UserProfile[] = [];
+          snap.forEach((d) => {
+            const u = { ...d.data(), id: d.id } as UserProfile;
+            if (u.role === 'client' || (!u.role && u.tradingPointName)) {
+              list.push(u);
+            }
+          });
+
+          const defaultClients = DEFAULT_USERS.filter((u) => u.role === 'client');
+          const mergedMap = new Map<string, UserProfile>();
+          defaultClients.forEach((c) => mergedMap.set(c.email, c));
+          list.forEach((c) => mergedMap.set(c.email, c));
+          const merged = Array.from(mergedMap.values());
+          merged.sort((a, b) =>
+            (a.tradingPointName || a.displayName).localeCompare(b.tradingPointName || b.displayName)
+          );
+          setClients(merged);
+          if (merged.length > 0) {
+            setSelectedClientId((prev) => prev || merged[0].id);
+          }
+        } catch (e) {
+          console.warn('Eroare la încărcarea clienților:', e);
+          const fallback = DEFAULT_USERS.filter((u) => u.role === 'client');
+          setClients(fallback);
+          if (fallback.length > 0) {
+            setSelectedClientId((prev) => prev || fallback[0].id);
+          }
+        }
+      };
+      fetchClients();
+    }
+  }, [isAdmin]);
+
+  const selectedClient = clients.find((c) => c.id === selectedClientId) || clients[0] || null;
 
   // Load products from Firestore safely without trying to write from client
   const loadProducts = async () => {
@@ -158,11 +211,21 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
       const randomSuffix = Math.floor(100 + Math.random() * 900);
       const orderNumber = `CMD-${dateToken}-${randomSuffix}`;
 
+      const clientPayload = isAdmin && selectedClient
+        ? {
+            clientId: selectedClient.id,
+            clientName: selectedClient.tradingPointName || selectedClient.displayName || 'Punct Vânzare',
+            clientEmail: selectedClient.email || '',
+          }
+        : {
+            clientId: currentUser?.uid || profile?.id || 'client-demo',
+            clientName: profile?.tradingPointName || profile?.displayName || 'Punct Vânzare',
+            clientEmail: currentUser?.email || profile?.email || '',
+          };
+
       const orderPayload: Omit<Order, 'id'> = {
         orderNumber,
-        clientId: currentUser?.uid || profile?.id || 'client-demo',
-        clientName: profile?.tradingPointName || profile?.displayName || 'Punct Vânzare',
-        clientEmail: currentUser?.email || profile?.email || '',
+        ...clientPayload,
         orderDate: getTodayString(),
         deliveryDate,
         state: autoConfirm ? 'confirmat' : 'creat',
@@ -230,6 +293,72 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
           </div>
         </div>
       </div>
+
+      {/* Admin Client Selector */}
+      {isAdmin && (
+        <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-5 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-amber-500 text-slate-950 rounded-xl font-bold shrink-0">
+                <Store className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-900">
+                    Comandă în Numele Clientului (Mod Administrator)
+                  </span>
+                  <span className="bg-amber-200/80 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Selectare Punct Vânzare
+                  </span>
+                </div>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Alegeți magazinul sau punctul de lucru căruia îi aparține această comandă:
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full md:w-84">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-900 mb-1">
+                Punct de Lucru / Magazin Destinatar *
+              </label>
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full text-xs font-bold bg-white border border-amber-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500 shadow-xs cursor-pointer"
+              >
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.tradingPointName ? `${c.tradingPointName} — ${c.email}` : `${c.displayName} — ${c.email}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {selectedClient && (
+            <div className="mt-3 pt-3 border-t border-amber-200/60 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-amber-950">
+              <div>
+                <span className="text-amber-700 font-semibold">Magazin: </span>
+                <span className="font-bold">{selectedClient.tradingPointName || selectedClient.displayName}</span>
+              </div>
+              <div>
+                <span className="text-amber-700 font-semibold">Reprezentant: </span>
+                <span>{selectedClient.displayName}</span>
+              </div>
+              <div>
+                <span className="text-amber-700 font-semibold">Email: </span>
+                <span className="font-mono text-slate-800">{selectedClient.email}</span>
+              </div>
+              {selectedClient.phone && (
+                <div>
+                  <span className="text-amber-700 font-semibold">Telefon: </span>
+                  <span>{selectedClient.phone}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {statusMessage && (
         <div
@@ -408,6 +537,21 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
                 {deliveryDate === getTodayString() ? 'Azi' : deliveryDate === getTomorrowString() ? 'Mâine' : 'Viitor'}
               </span>
             </div>
+
+            {/* Admin Destination Client Info */}
+            {isAdmin && selectedClient && (
+              <div className="p-3.5 bg-slate-50 border-b border-slate-200 text-xs">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                  Client Destinatar:
+                </span>
+                <div className="font-bold text-slate-900 mt-0.5">
+                  {selectedClient.tradingPointName || selectedClient.displayName}
+                </div>
+                <div className="text-[11px] text-slate-500 font-mono">
+                  {selectedClient.email}
+                </div>
+              </div>
+            )}
 
             {/* Items in Cart */}
             <div className="p-4 max-h-72 overflow-y-auto divide-y divide-slate-100">

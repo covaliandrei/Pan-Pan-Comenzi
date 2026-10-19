@@ -1,4 +1,4 @@
-import { Product } from '../types';
+import { Product, UserProfile } from '../types';
 
 export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   {
@@ -136,3 +136,40 @@ export function formatDateRomanian(dateStr: string): string {
     return dateStr;
   }
 }
+
+export const DEFAULT_USERS: UserProfile[] = [
+  {
+    id: 'user-covali-admin',
+    email: 'covali.andrei.box@gmail.com',
+    displayName: 'Andrei Covali',
+    role: 'admin',
+    phone: '0744 555 888',
+    createdAt: '2026-10-17T12:00:00.000Z',
+  },
+  {
+    id: 'user-moscovei-client',
+    email: 'moscovei@panpan.md',
+    displayName: 'magazin bd.Moscovei',
+    tradingPointName: 'Magazin bd. Moscovei',
+    role: 'client',
+    phone: '069 888 777',
+    createdAt: '2026-10-17T19:30:00.000Z',
+  },
+  {
+    id: 'user-prod-seftura',
+    email: 'productie.brutarie@panpan.ro',
+    displayName: 'Mihai - Șef Tură Coacere',
+    role: 'production',
+    phone: '0733 987 654',
+    createdAt: '2026-10-17T18:00:00.000Z',
+  },
+  {
+    id: 'user-unirii-client',
+    email: 'magazin.centru@panpan.ro',
+    displayName: 'Elena Popescu',
+    tradingPointName: 'Magazin Central Unirii',
+    role: 'client',
+    phone: '0722 123 456',
+    createdAt: '2026-10-17T18:30:00.000Z',
+  },
+];

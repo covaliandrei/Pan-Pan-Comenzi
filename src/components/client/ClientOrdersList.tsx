@@ -48,16 +48,13 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
   };
 
   useEffect(() => {
-    if (!currentUser || isDemoUser) {
-      loadLocalFallback();
-      return;
-    }
-
     setLoading(true);
     const ordersRef = collection(db, 'orders');
+    const clientId = currentUser?.uid || profile?.id;
+
     const q = role === 'admin'
       ? query(ordersRef)
-      : query(ordersRef, where('clientId', '==', currentUser.uid));
+      : (clientId ? query(ordersRef, where('clientId', '==', clientId)) : query(ordersRef));
 
     const unsubscribe = onSnapshot(
       q,
@@ -67,7 +64,13 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
           list.push({ ...docSnap.data(), id: docSnap.id } as Order);
         });
         list.sort((a, b) => (b.deliveryDate || '').localeCompare(a.deliveryDate || ''));
-        setOrders(list.length > 0 ? list : getLocalOrders());
+        if (list.length > 0) {
+          setOrders(list);
+        } else if (isDemoUser && !currentUser) {
+          setOrders(getLocalOrders());
+        } else {
+          setOrders([]);
+        }
         setLoading(false);
       },
       (error) => {
@@ -77,7 +80,7 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
     );
 
     return () => unsubscribe();
-  }, [currentUser, role, isDemoUser]);
+  }, [currentUser, role, isDemoUser, profile?.id]);
 
   const handleConfirmOrder = async (order: Order) => {
     try {
@@ -322,7 +325,7 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
                       </span>
                     ) : order.state === 'confirmat' ? (
                       <span className="text-blue-700 font-medium">
-                        * Preluată de producție. Se va coace și pregăti pentru livrare.
+                        * Preluată de producție. Se va pregăti pentru livrare.
                       </span>
                     ) : (
                       <span className="text-emerald-700 font-medium">

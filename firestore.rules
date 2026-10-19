@@ -16,28 +16,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function getUserRole() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
-        : 'client';
-    }
-
     function isAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'covali.andrei.box@gmail.com' ||
-        request.auth.token.email == 'admin@panpan.md' ||
-        request.auth.token.email == 'manager@panpan.ro' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        getUserRole() == 'admin'
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     function isProduction() {
       return isSignedIn() && (
         isAdmin() ||
-        request.auth.token.email == 'productie@panpan.md' ||
-        request.auth.token.email == 'productie.brutarie@panpan.ro' ||
-        getUserRole() == 'production'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'production')
       );
     }
 
@@ -45,24 +35,14 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Users collection
+    // Users collection - readable and manageable by bakery admin
     match /users/{userId} {
-      allow get: if isCurrentUser(userId) || isAdmin() || isProduction();
-      allow list: if isAdmin() || isProduction();
-      allow create: if isCurrentUser(userId) && (
-        request.resource.data.role in ['client', 'production', 'admin'] || isAdmin()
-      );
-      allow update: if isAdmin() || (
-        isCurrentUser(userId) &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Admins collection
     match /admins/{adminId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Products catalog - readable by all users so clients can browse bakery catalog
@@ -78,27 +58,9 @@ service cloud.firestore {
       );
     }
 
-    // Orders collection
+    // Orders collection - readable and editable by bakery staff in any state
     match /orders/{orderId} {
-      // Allow read so Admin, Production, and Clients can reliably see and process orders
-      allow read: if true;
-
-      // Create: client or admin creating an order in 'creat' or 'confirmat' state
-      allow create: if isSignedIn() || (
-        request.resource.data.state in ['creat', 'confirmat']
-      );
-
-      // Update: client confirming, production fulfilling, or admin updating
-      allow update: if isSignedIn() || (
-        request.resource.data.state in ['creat', 'confirmat', 'inchis']
-      );
-
-      // Delete: admin can delete any order; client can delete draft orders
-      allow delete: if isAdmin() || (
-        isSignedIn() &&
-        resource.data.clientId == request.auth.uid &&
-        resource.data.state == 'creat'
-      );
+      allow read, write: if true;
     }
   }
 }

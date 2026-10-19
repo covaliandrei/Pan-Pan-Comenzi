@@ -3,27 +3,18 @@ import {
   Wheat,
   Lock,
   Mail,
-  User,
-  Store,
-  Phone,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithEmail, registerWithEmail, loginWithGoogle, quickDemoLogin } = useAuth();
-  const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const { loginWithEmail, loginWithGoogle, quickDemoLogin } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
-  const [displayName, setDisplayName] = useState<string>('');
-  const [tradingPointName, setTradingPointName] = useState<string>('');
-  const [phone, setPhone] = useState<string>('');
-  const [role, setRole] = useState<UserRole>('client');
-
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
@@ -33,28 +24,16 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        if (!displayName.trim()) {
-          setErrorMsg('Vă rugăm să introduceți numele complet.');
-          setLoading(false);
-          return;
-        }
-        if (role === 'client' && !tradingPointName.trim()) {
-          setErrorMsg('Vă rugăm să introduceți denumirea punctului de desfacere (magazinului).');
-          setLoading(false);
-          return;
-        }
-        await registerWithEmail(email, password, displayName, role, tradingPointName, phone);
-      } else {
-        await loginWithEmail(email, password);
-      }
+      await loginWithEmail(email, password);
     } catch (err: any) {
       console.error('Eroare autentificare:', err);
       let userReadable = err.message || 'A apărut o problemă la conectare. Verificați datele introduse.';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        userReadable = 'Email-ul sau parola sunt incorecte. Verificați datele sau folosiți conturile demonstrative de mai jos.';
-      } else if (err.code === 'auth/email-already-in-use') {
-        userReadable = 'Acest email este deja înregistrat. Vă rugăm să vă autentificați.';
+      if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential'
+      ) {
+        userReadable = 'Email-ul sau parola sunt incorecte. Contactați administratorul brutăriei dacă aveți nevoie de resetare.';
       } else if (err.code === 'auth/weak-password') {
         userReadable = 'Parola trebuie să conțină cel puțin 6 caractere.';
       }
@@ -72,7 +51,7 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Eroare Google login:', err);
       if (err?.code !== 'auth/popup-closed-by-user') {
-        setErrorMsg('Conectarea cu Google a eșuat. Puteți folosi accesul demonstrativ de mai jos.');
+        setErrorMsg('Conectarea cu Google a eșuat. Puteți folosi autentificarea cu email sau accesul demonstrativ de mai jos.');
       }
     } finally {
       setLoading(false);
@@ -107,6 +86,13 @@ export const LoginPage: React.FC = () => {
 
         {/* Card */}
         <div className="mt-6 bg-white py-8 px-6 shadow-xl border border-slate-200/80 rounded-3xl sm:px-10">
+          <div className="mb-5 text-center">
+            <h3 className="text-lg font-black text-slate-900">Autentificare în Sistem</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Introduceți datele de acces furnizate de conducerea brutăriei.
+            </p>
+          </div>
+
           {/* Google Sign In Button */}
           <button
             type="button"
@@ -144,34 +130,6 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-5 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(false);
-                setErrorMsg('');
-              }}
-              className={`flex-1 py-2 rounded-lg transition cursor-pointer ${
-                !isSignUp ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Autentificare
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(true);
-                setErrorMsg('');
-              }}
-              className={`flex-1 py-2 rounded-lg transition cursor-pointer ${
-                isSignUp ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Creează cont nou
-            </button>
-          </div>
-
           {errorMsg && (
             <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-start gap-2.5 leading-relaxed">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -180,109 +138,6 @@ export const LoginPage: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Nume și Prenume *
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ex: Elena Popescu"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
-                    />
-                  </div>
-                </div>
-
-                {/* Role Selection */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Tip Utilizator & Rol *
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRole('client')}
-                      className={`p-2 rounded-xl border text-center transition cursor-pointer ${
-                        role === 'client'
-                          ? 'border-amber-500 bg-amber-50/50 text-amber-950 font-bold'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Store className="w-4 h-4 mx-auto mb-1 text-amber-600" />
-                      <span className="text-[11px] block leading-tight">Punct Vânzare</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRole('production')}
-                      className={`p-2 rounded-xl border text-center transition cursor-pointer ${
-                        role === 'production'
-                          ? 'border-amber-500 bg-amber-50/50 text-amber-950 font-bold'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Wheat className="w-4 h-4 mx-auto mb-1 text-amber-600" />
-                      <span className="text-[11px] block leading-tight">Producție</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRole('admin')}
-                      className={`p-2 rounded-xl border text-center transition cursor-pointer ${
-                        role === 'admin'
-                          ? 'border-amber-500 bg-amber-50/50 text-amber-950 font-bold'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      <ShieldCheck className="w-4 h-4 mx-auto mb-1 text-amber-600" />
-                      <span className="text-[11px] block leading-tight">Manager</span>
-                    </button>
-                  </div>
-                </div>
-
-                {role === 'client' && (
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                      Denumire Punct de Lucru / Magazin *
-                    </label>
-                    <div className="relative">
-                      <Store className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ex: Magazin Unirii / Băcănie Dorobanți"
-                        value={tradingPointName}
-                        onChange={(e) => setTradingPointName(e.target.value)}
-                        className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                    Telefon Contact (opțional)
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="tel"
-                      placeholder="Ex: 0722 123 456"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Adresă de Email *
@@ -292,7 +147,7 @@ export const LoginPage: React.FC = () => {
                 <input
                   type="email"
                   required
-                  placeholder="nume@exemplu.ro"
+                  placeholder="nume@panpan.md"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
@@ -309,7 +164,7 @@ export const LoginPage: React.FC = () => {
                 <input
                   type="password"
                   required
-                  placeholder="Minim 6 caractere"
+                  placeholder="Introduceți parola de acces"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
@@ -320,15 +175,23 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 disabled:opacity-50 text-slate-950 font-bold text-sm rounded-xl shadow-md transition cursor-pointer mt-2"
+              className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-amber-500 hover:bg-amber-400 active:bg-amber-600 disabled:opacity-50 text-slate-950 font-bold text-sm rounded-xl shadow-md transition cursor-pointer mt-2"
             >
-              <span>{loading ? 'Se procesează...' : isSignUp ? 'Creează Contul' : 'Autentifică-te'}</span>
+              <span>{loading ? 'Se verifică datele...' : 'Intră în cont'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
+          {/* Notice about accounts managed by Admin */}
+          <div className="mt-5 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-start gap-2.5 text-slate-500 text-[11px] leading-relaxed">
+            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>
+              Conturile pentru punctele de vânzare și personal sunt create și administrate exclusiv de conducerea brutăriei. Pentru crearea sau modificarea unui cont, contactați administratorul.
+            </span>
+          </div>
+
           {/* Quick Demo Accounts Helper */}
-          <div className="mt-7 pt-5 border-t border-slate-200">
+          <div className="mt-6 pt-5 border-t border-slate-200">
             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>Acces Rapid Demonstrativ (Fără parolă)</span>
@@ -368,7 +231,7 @@ export const LoginPage: React.FC = () => {
               >
                 <div>
                   <span className="font-bold text-slate-900 block">Manager / Administrator</span>
-                  <span className="text-[11px] text-slate-500">Gestionare produse, import CSV, toate comenzile</span>
+                  <span className="text-[11px] text-slate-500">Gestiune utilizatori, catalog, import CSV, toate comenzile</span>
                 </div>
                 <span className="text-amber-700 font-bold text-[11px]">Intră &rarr;</span>
               </button>

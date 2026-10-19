@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Plus, Trash2, Calendar, AlertCircle, ShoppingBag } from 'lucide-react';
-import { Order, OrderItem, Product } from '../../types';
+import { X, Save, Plus, Trash2, Calendar, AlertCircle, ShoppingBag, ShieldCheck } from 'lucide-react';
+import { Order, OrderItem, OrderState, Product } from '../../types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { getTodayString } from '../../lib/initialData';
@@ -20,8 +20,11 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, role } = useAuth();
+  const isAdmin = role === 'admin';
+
   const [deliveryDate, setDeliveryDate] = useState<string>('');
+  const [orderState, setOrderState] = useState<OrderState>('creat');
   const [items, setItems] = useState<OrderItem[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
@@ -32,6 +35,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
   useEffect(() => {
     if (order) {
       setDeliveryDate(order.deliveryDate);
+      setOrderState(order.state || 'creat');
       setItems([...order.items]);
       setNotes(order.notes || '');
       setErrorMsg('');
@@ -40,7 +44,6 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Fetch active products for adding new items
       const fetchProducts = async () => {
         try {
           const snap = await getDocs(collection(db, 'products'));
@@ -107,7 +110,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   const totalAmount = items.reduce((sum, it) => sum + it.itemTotal, 0);
 
-  const handleSave = async (shouldConfirm: boolean = false) => {
+  const handleSave = async (forcedState?: OrderState) => {
     try {
       setIsSubmitting(true);
       setErrorMsg('');
@@ -118,7 +121,8 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         return;
       }
 
-      if (deliveryDate < minDate) {
+      // Only check past date for non-admin clients
+      if (!isAdmin && deliveryDate < minDate) {
         setErrorMsg('Data de livrare nu poate fi în trecut (minim astăzi).');
         setIsSubmitting(false);
         return;
@@ -131,19 +135,18 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         return;
       }
 
+      const finalState = forcedState || orderState;
+
       const updatePayload: Record<string, any> = {
         deliveryDate,
+        state: finalState,
         items: validItems,
         totalAmount: Number(totalAmount.toFixed(2)),
         notes: notes.trim(),
         updatedAt: new Date().toISOString(),
       };
 
-      if (shouldConfirm) {
-        updatePayload.state = 'confirmat';
-      }
-
-      await updateOrder(order.id, updatePayload, !currentUser);
+      await updateOrder(order.id, updatePayload);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -156,21 +159,30 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+            <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-2xl">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">Editare Comandă: {order.orderNumber}</h3>
-              <p className="text-xs text-slate-300">Stare curentă: <span className="font-semibold text-amber-400">Creată</span></p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-base leading-tight">Editare Comandă: {order.orderNumber}</h3>
+                {isAdmin && (
+                  <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
+                    Mod Administrator
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Client: <span className="text-white font-medium">{order.clientName}</span> ({order.clientEmail})
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -179,31 +191,58 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* Delivery Date Picker */}
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              Data de Livrare Solicitată (minim astăzi)
-            </label>
-            <input
-              type="date"
-              min={minDate}
-              value={deliveryDate}
-              onChange={(e) => setDeliveryDate(e.target.value)}
-              className="w-full sm:w-64 px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
-            />
+          {/* Delivery Date & Order State Pickers */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Delivery Date */}
+            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-amber-600" />
+                Data de Livrare
+              </label>
+              <input
+                type="date"
+                min={isAdmin ? undefined : minDate}
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                {isAdmin ? 'Administratorul poate modifica data pentru orice zi.' : 'Minim astăzi.'}
+              </span>
+            </div>
+
+            {/* State Picker */}
+            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                Stare Comandă
+              </label>
+              <select
+                value={orderState}
+                onChange={(e) => setOrderState(e.target.value as OrderState)}
+                disabled={!isAdmin && order.state !== 'creat'}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400 cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+              >
+                <option value="creat">Creată (Ciornă - poate fi editată)</option>
+                <option value="confirmat">Confirmată (Transmisă la producție)</option>
+                <option value="inchis">Închisă (Livrată și recepționată)</option>
+              </select>
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                {isAdmin ? 'Administratorul poate salva comanda în orice stare.' : 'Starea comenzii.'}
+              </span>
+            </div>
           </div>
 
           {/* Items List */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Produse Comandate ({items.length})
               </h4>
             </div>
@@ -212,7 +251,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               {items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl gap-3"
+                  className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl gap-3"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -233,7 +272,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                       step={item.unit === 'kg' ? '0.1' : '1'}
                       value={item.orderedQuantity}
                       onChange={(e) => handleQuantityChange(idx, parseFloat(e.target.value))}
-                      className="w-20 text-center px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+                      className="w-20 text-center px-2 py-1 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
                     />
                     <span className="text-xs font-semibold text-slate-600 w-8">{item.unit}</span>
                     <span className="text-xs font-bold text-slate-800 w-20 text-right">
@@ -242,7 +281,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveItem(idx)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
                       title="Șterge produs"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -254,11 +293,11 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
 
             {/* Add product select */}
             {availableProducts.length > 0 && (
-              <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+              <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-3">
                 <select
                   value={selectedProductToAdd}
                   onChange={(e) => setSelectedProductToAdd(e.target.value)}
-                  className="flex-1 text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
+                  className="flex-1 text-xs bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="">-- Adaugă un alt produs din catalog --</option>
                   {availableProducts.map((p) => (
@@ -271,7 +310,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
                   type="button"
                   onClick={handleAddProduct}
                   disabled={!selectedProductToAdd}
-                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Adaugă</span>
@@ -290,7 +329,7 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Instrucțiuni speciale pentru brutărie sau livrare..."
-              className="w-full text-xs p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-hidden"
+              className="w-full text-xs p-3 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-amber-400 outline-hidden"
             />
           </div>
         </div>
@@ -307,27 +346,29 @@ export const EditOrderModal: React.FC<EditOrderModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition"
+              className="px-3.5 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition cursor-pointer"
             >
               Anulează
             </button>
             <button
               type="button"
-              onClick={() => handleSave(false)}
+              onClick={() => handleSave()}
               disabled={isSubmitting}
-              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-slate-800 bg-amber-400 hover:bg-amber-500 rounded-xl shadow-xs transition cursor-pointer"
+              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-xs transition cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{isSubmitting ? 'Se salvează...' : 'Salvează Modificările'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => handleSave(true)}
-              disabled={isSubmitting}
-              className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition cursor-pointer"
-            >
-              <span>Salvează & Confirmă</span>
-            </button>
+            {orderState === 'creat' && (
+              <button
+                type="button"
+                onClick={() => handleSave('confirmat')}
+                disabled={isSubmitting}
+                className="flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl shadow-xs transition cursor-pointer"
+              >
+                <span>Salvează & Confirmă</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
