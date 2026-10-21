@@ -12,6 +12,7 @@ import {
 import { db, auth } from './firebase';
 import { Order } from '../types';
 import { cleanFirestorePayload } from './sanitizer';
+import { getTomorrowString } from './initialData';
 
 const LOCAL_STORAGE_ORDERS_KEY = 'panpan_local_orders';
 
@@ -20,11 +21,11 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
   {
     id: 'demo-ord-101',
     orderNumber: 'CMD-20261018-742',
-    clientId: 'demo-client-unirii',
-    clientName: 'Magazin Central Unirii',
+    clientId: 'demo-client-botanica',
+    clientName: 'Magazin Botanica',
     clientEmail: 'magazin.centru@panpan.md',
     orderDate: '2026-10-17',
-    deliveryDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    deliveryDate: getTomorrowString(),
     state: 'confirmat',
     items: [
       {
@@ -66,11 +67,11 @@ const DEFAULT_DEMO_ORDERS: Order[] = [
   {
     id: 'demo-ord-102',
     orderNumber: 'CMD-20261018-815',
-    clientId: 'demo-client-unirii',
-    clientName: 'Magazin Central Unirii',
+    clientId: 'demo-client-botanica',
+    clientName: 'Magazin Botanica',
     clientEmail: 'magazin.centru@panpan.md',
     orderDate: '2026-10-17',
-    deliveryDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    deliveryDate: getTomorrowString(),
     state: 'creat',
     items: [
       {

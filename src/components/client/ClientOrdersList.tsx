@@ -46,7 +46,7 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
     const local = getLocalOrders();
     const filtered = role === 'admin'
       ? local
-      : local.filter((o) => o.clientId === (currentUser?.uid || profile?.id || 'demo-client-unirii'));
+      : local.filter((o) => o.clientId === (currentUser?.uid || profile?.id || 'demo-client-botanica'));
     filtered.sort((a, b) => (b.deliveryDate || '').localeCompare(a.deliveryDate || ''));
     setOrders(filtered);
     setLoading(false);
@@ -353,25 +353,113 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
                     {order.state === 'inchis' && <span className="text-emerald-700 font-bold">*Cantități finale cântărite la livrare</span>}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {order.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs flex justify-between items-center"
-                      >
-                        <div className="truncate mr-2">
-                          <span className="font-semibold text-slate-800">{item.productName}</span>
-                        </div>
-                        <div className="text-right whitespace-nowrap">
-                          <span className="font-bold text-slate-900">
-                            {order.state === 'inchis' && item.pickedQuantity !== undefined
+                  {/* Desktop / Tablet Table View */}
+                  <div className="hidden sm:block overflow-x-auto border border-slate-200/90 rounded-xl my-2">
+                    <table className="w-full text-xs text-left border-collapse">
+                      <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="py-2 px-3 text-center w-8">#</th>
+                          <th className="py-2 px-3 w-20">Cod</th>
+                          <th className="py-2 px-3">Produs</th>
+                          <th className="py-2 px-3 text-center w-16">Unitate</th>
+                          <th className="py-2 px-3 text-right w-24">Preț Unitar</th>
+                          <th className="py-2 px-3 text-right w-28">Comandat</th>
+                          {order.state === 'inchis' && (
+                            <th className="py-2 px-3 text-right w-28 text-emerald-800">Livrat</th>
+                          )}
+                          <th className="py-2 px-3 text-right w-28">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {order.items.map((item, idx) => {
+                          const finalQty =
+                            order.state === 'inchis' && item.pickedQuantity !== undefined
                               ? item.pickedQuantity
-                              : item.orderedQuantity}{' '}
-                            {item.unit}
-                          </span>
+                              : item.orderedQuantity;
+                          const total = item.itemTotal || Number((finalQty * item.unitPrice).toFixed(2));
+                          const isAdjusted =
+                            order.state === 'inchis' &&
+                            item.pickedQuantity !== undefined &&
+                            item.pickedQuantity !== item.orderedQuantity;
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/70 transition">
+                              <td className="py-2 px-3 text-center text-slate-400">{idx + 1}</td>
+                              <td className="py-2 px-3 font-mono text-slate-500 font-semibold">{item.productCode || '-'}</td>
+                              <td className="py-2 px-3 font-medium text-slate-900">{item.productName}</td>
+                              <td className="py-2 px-3 text-center">
+                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-semibold">
+                                  {item.unit}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right text-slate-600">{item.unitPrice.toFixed(2)} lei</td>
+                              <td className="py-2 px-3 text-right font-bold text-slate-900">
+                                {item.orderedQuantity} {item.unit}
+                              </td>
+                              {order.state === 'inchis' && (
+                                <td className="py-2 px-3 text-right font-black text-emerald-700">
+                                  {finalQty} {item.unit}
+                                  {isAdjusted && (
+                                    <span className="block text-[10px] font-normal text-amber-700">(ajustat)</span>
+                                  )}
+                                </td>
+                              )}
+                              <td className="py-2 px-3 text-right font-bold text-slate-950">
+                                {total.toFixed(2)} lei
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile-Friendly List View */}
+                  <div className="block sm:hidden space-y-2 my-2">
+                    {order.items.map((item, idx) => {
+                      const finalQty =
+                        order.state === 'inchis' && item.pickedQuantity !== undefined
+                          ? item.pickedQuantity
+                          : item.orderedQuantity;
+                      const total = item.itemTotal || Number((finalQty * item.unitPrice).toFixed(2));
+                      const isAdjusted =
+                        order.state === 'inchis' &&
+                        item.pickedQuantity !== undefined &&
+                        item.pickedQuantity !== item.orderedQuantity;
+
+                      return (
+                        <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              {item.productCode && (
+                                <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200 mr-1.5">
+                                  {item.productCode}
+                                </span>
+                              )}
+                              <span className="font-bold text-slate-900 text-xs">{item.productName}</span>
+                            </div>
+                            <span className="font-black text-xs text-slate-950 shrink-0">{total.toFixed(2)} lei</span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-slate-600 pt-1.5 border-t border-slate-200/60">
+                            <span className="text-[11px] text-slate-500">
+                              {item.unitPrice.toFixed(2)} lei / {item.unit}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-700">
+                                Comandat: <strong className="text-slate-900">{item.orderedQuantity} {item.unit}</strong>
+                              </span>
+                              {order.state === 'inchis' && (
+                                <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[11px]">
+                                  Livrat: {finalQty} {item.unit}
+                                  {isAdjusted && <span className="text-[10px] text-amber-700 ml-0.5">*</span>}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {order.notes && (

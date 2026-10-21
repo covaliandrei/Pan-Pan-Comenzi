@@ -195,7 +195,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="Ex: Magazin bd. Moscovei / Punct Unirii"
+                  placeholder="Ex: Magazin bd. Moscovei / Magazin Botanica"
                   value={tradingPointName}
                   onChange={(e) => setTradingPointName(e.target.value)}
                   className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"

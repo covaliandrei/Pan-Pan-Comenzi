@@ -111,16 +111,60 @@ export const INITIAL_PRODUCTS: Omit<Product, 'id'>[] = [
   },
 ];
 
-// Helper to get formatted date string for today and tomorrow
+export const MOLDOVA_TIMEZONE = 'Europe/Chisinau';
+
+/**
+ * Returns year, month, day in Moldova timezone ('Europe/Chisinau')
+ */
+export function getMoldovaDateParts(date: Date = new Date()): { year: string; month: string; day: string } {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MOLDOVA_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  // 'en-CA' outputs 'YYYY-MM-DD'
+  const formatted = formatter.format(date);
+  const [year, month, day] = formatted.split('-');
+  return { year, month, day };
+}
+
+// Helper to get formatted date string for today and tomorrow in Moldova timezone
 export function getTodayString(): string {
-  const d = new Date();
-  return d.toISOString().split('T')[0];
+  const { year, month, day } = getMoldovaDateParts();
+  return `${year}-${month}-${day}`;
 }
 
 export function getTomorrowString(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const { year, month, day } = getMoldovaDateParts(tomorrow);
+  return `${year}-${month}-${day}`;
+}
+
+export function formatMoldovaDateTime(dateInput?: string | Date | number): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return String(dateInput);
+  return new Intl.DateTimeFormat('ro-MD', {
+    timeZone: MOLDOVA_TIMEZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+export function formatMoldovaTime(dateInput?: string | Date | number): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('ro-MD', {
+    timeZone: MOLDOVA_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 export function formatDateDDMMYYYY(dateStr: string): string {
@@ -180,10 +224,10 @@ export const DEFAULT_USERS: UserProfile[] = [
     createdAt: '2026-10-17T18:00:00.000Z',
   },
   {
-    id: 'user-unirii-client',
+    id: 'user-botanica-client',
     email: 'magazin.centru@panpan.md',
     displayName: 'Elena Popescu',
-    tradingPointName: 'Magazin Central Unirii',
+    tradingPointName: 'Magazin Botanica',
     role: 'client',
     phone: '0722 123 456',
     createdAt: '2026-10-17T18:30:00.000Z',

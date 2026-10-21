@@ -247,11 +247,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const quickDemoLogin = async (targetRole: UserRole) => {
     const demoProfiles: Record<string, UserProfile> = {
       client: {
-        id: 'demo-client-unirii',
+        id: 'demo-client-botanica',
         email: 'magazin.centru@panpan.md',
-        displayName: 'Elena - Magazin Unirii',
+        displayName: 'Elena - Magazin Botanica',
         role: 'client',
-        tradingPointName: 'Punct de lucru Str. Unirii nr. 14',
+        tradingPointName: 'Magazin Botanica',
         phone: '061 030 063',
       },
       production: {

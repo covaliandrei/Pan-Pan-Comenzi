@@ -205,7 +205,7 @@ export const LoginPage: React.FC = () => {
               >
                 <div>
                   <span className="font-bold text-slate-900 block">Punct de Lucru / Client</span>
-                  <span className="text-[11px] text-slate-500">Magazin Central Unirii (plasează și confirmă comenzi)</span>
+                  <span className="text-[11px] text-slate-500">Magazin Botanica (plasează și confirmă comenzi)</span>
                 </div>
                 <span className="text-amber-700 font-bold text-[11px]">Intră &rarr;</span>
               </button>
