@@ -23,7 +23,7 @@ import {
 import { Order, UserProfile } from '../../types';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { formatDateRomanian, getTodayString, getTomorrowString } from '../../lib/initialData';
+import { formatDateRomanian, getTodayString, getTomorrowString, getYesterdayString } from '../../lib/initialData';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { PrintOrderModal } from '../modals/PrintOrderModal';
 import { EditOrderModal } from '../modals/EditOrderModal';
@@ -43,10 +43,15 @@ export const AdminDashboard: React.FC<{
   const [loadingOrders, setLoadingOrders] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [stateFilter, setStateFilter] = useState<string>('toate');
-  const [dateFilter, setDateFilter] = useState<string>(getTodayString());
 
   const todayStr = getTodayString();
   const tomorrowStr = getTomorrowString();
+  const yesterdayStr = getYesterdayString();
+
+  const [dateMode, setDateMode] = useState<'single' | 'range' | 'toate'>('single');
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [endDate, setEndDate] = useState<string>(todayStr);
 
   // Modals
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
@@ -107,26 +112,51 @@ export const AdminDashboard: React.FC<{
     }
   };
 
-  const filteredOrders = orders.filter((o) => {
+  // Filter orders according to selected date or range
+  const isOrderInDateSelection = (o: Order) => {
+    if (dateMode === 'toate') return true;
+    if (!o.deliveryDate) return false;
+    if (dateMode === 'range') {
+      return o.deliveryDate >= startDate && o.deliveryDate <= endDate;
+    }
+    return o.deliveryDate === selectedDate;
+  };
+
+  const ordersInDate = orders.filter(isOrderInDateSelection);
+
+  const dateLabel =
+    dateMode === 'toate'
+      ? 'Toate datele'
+      : dateMode === 'range'
+      ? `${formatDateRomanian(startDate)} – ${formatDateRomanian(endDate)}`
+      : selectedDate === todayStr
+      ? `Azi (${formatDateRomanian(todayStr)})`
+      : selectedDate === yesterdayStr
+      ? `Ieri (${formatDateRomanian(yesterdayStr)})`
+      : selectedDate === tomorrowStr
+      ? `Mâine (${formatDateRomanian(tomorrowStr)})`
+      : formatDateRomanian(selectedDate);
+
+  const filteredOrders = ordersInDate.filter((o) => {
     const matchSearch =
       o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
       o.clientName?.toLowerCase().includes(search.toLowerCase()) ||
-      o.clientEmail?.toLowerCase().includes(search.toLowerCase());
+      o.clientEmail?.toLowerCase().includes(search.toLowerCase()) ||
+      o.items.some((it) => it.productName.toLowerCase().includes(search.toLowerCase()));
     const matchState = stateFilter === 'toate' || o.state === stateFilter;
-    const matchDate = !dateFilter || o.deliveryDate === dateFilter;
-    return matchSearch && matchState && matchDate;
+    return matchSearch && matchState;
   });
 
-  // KPI Calculations
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-  const countCreated = orders.filter((o) => o.state === 'creat').length;
-  const countConfirmed = orders.filter((o) => o.state === 'confirmat').length;
-  const countClosed = orders.filter((o) => o.state === 'inchis').length;
-  const uniqueClients = Array.from(new Set(orders.map((o) => o.clientName).filter(Boolean))).length;
+  // KPI Calculations for the selected date range
+  const totalRevenue = ordersInDate.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const countCreated = ordersInDate.filter((o) => o.state === 'creat').length;
+  const countConfirmed = ordersInDate.filter((o) => o.state === 'confirmat').length;
+  const countClosed = ordersInDate.filter((o) => o.state === 'inchis').length;
+  const uniqueClients = Array.from(new Set(ordersInDate.map((o) => o.clientName).filter(Boolean))).length;
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & KPI metrics */}
+      {/* Top Banner & Quick Navigation */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2 text-amber-600 font-semibold text-xs tracking-wider uppercase mb-1">
@@ -163,14 +193,145 @@ export const AdminDashboard: React.FC<{
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Date Range Selector Bar for KPI metrics and Orders */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Filtrare Perioadă Dashboard:
+              </span>
+              <span className="text-xs font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                {dateLabel}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Panourile KPI de mai jos afișează datele din perioada selectată ({ordersInDate.length} comenzi înregistrate).
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Date Buttons & Inputs */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-700 gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setDateMode('single');
+                setSelectedDate(yesterdayStr);
+              }}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                dateMode === 'single' && selectedDate === yesterdayStr
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'hover:text-slate-900'
+              }`}
+            >
+              Ieri
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateMode('single');
+                setSelectedDate(todayStr);
+              }}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                dateMode === 'single' && selectedDate === todayStr
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'hover:text-slate-900'
+              }`}
+            >
+              Azi
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateMode('single');
+                setSelectedDate(tomorrowStr);
+              }}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                dateMode === 'single' && selectedDate === tomorrowStr
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'hover:text-slate-900'
+              }`}
+            >
+              Mâine
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateMode('range');
+              }}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                dateMode === 'range'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'hover:text-slate-900'
+              }`}
+            >
+              Interval (Range)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateMode('toate')}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                dateMode === 'toate'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                  : 'hover:text-slate-900'
+              }`}
+            >
+              Toate Datele
+            </button>
+          </div>
+
+          {/* Date Picker inputs */}
+          {dateMode === 'single' ? (
+            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-hidden cursor-pointer"
+                title="Selectează o dată specifică"
+              />
+            </div>
+          ) : dateMode === 'range' ? (
+            <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-semibold text-slate-500">De la:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-hidden cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] font-semibold text-slate-500">Până la:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-amber-400 outline-hidden cursor-pointer"
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {/* KPI Cards reflecting selected date range */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">Total Comenzi</span>
             <ShoppingBag className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-black text-slate-950">{orders.length}</div>
+          <div className="text-2xl font-black text-slate-950">{ordersInDate.length}</div>
           <div className="text-[11px] text-slate-400 mt-1">
             <span className="text-amber-600 font-bold">{countCreated}</span> ciorne,{' '}
             <span className="text-blue-600 font-bold">{countConfirmed}</span> în producție
@@ -191,7 +352,7 @@ export const AdminDashboard: React.FC<{
             <span className="text-xs font-bold uppercase tracking-wider">Puncte Active</span>
             <Store className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-black text-slate-950">{uniqueClients || 1}</div>
+          <div className="text-2xl font-black text-slate-950">{uniqueClients}</div>
           <div className="text-[11px] text-slate-400 mt-1">Magazine & clienți parteneri</div>
         </div>
 
@@ -201,7 +362,7 @@ export const AdminDashboard: React.FC<{
             <Coins className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-black text-slate-950">{totalRevenue.toFixed(2)} lei</div>
-          <div className="text-[11px] text-slate-400 mt-1">total rulat în sistem</div>
+          <div className="text-[11px] text-slate-400 mt-1">valoare comenzi livrare</div>
         </div>
       </div>
 
@@ -216,7 +377,7 @@ export const AdminDashboard: React.FC<{
               : 'border-transparent text-slate-500 hover:text-slate-700'
           }`}
         >
-          Toate Comenzile ({orders.length})
+          Toate Comenzile ({ordersInDate.length})
         </button>
 
         <button
@@ -282,7 +443,7 @@ export const AdminDashboard: React.FC<{
                     stateFilter === 'toate' ? 'bg-white text-slate-900 shadow-xs font-bold' : 'hover:text-slate-900'
                   }`}
                 >
-                  Toate
+                  Toate ({ordersInDate.length})
                 </button>
                 <button
                   onClick={() => setStateFilter('creat')}
@@ -290,7 +451,7 @@ export const AdminDashboard: React.FC<{
                     stateFilter === 'creat' ? 'bg-white text-amber-800 shadow-xs font-bold' : 'hover:text-slate-900'
                   }`}
                 >
-                  Create
+                  Create ({countCreated})
                 </button>
                 <button
                   onClick={() => setStateFilter('confirmat')}
@@ -298,7 +459,7 @@ export const AdminDashboard: React.FC<{
                     stateFilter === 'confirmat' ? 'bg-white text-blue-800 shadow-xs font-bold' : 'hover:text-slate-900'
                   }`}
                 >
-                  Confirmate
+                  Confirmate ({countConfirmed})
                 </button>
                 <button
                   onClick={() => setStateFilter('inchis')}
@@ -306,48 +467,9 @@ export const AdminDashboard: React.FC<{
                     stateFilter === 'inchis' ? 'bg-white text-emerald-800 shadow-xs font-bold' : 'hover:text-slate-900'
                   }`}
                 >
-                  Închise
+                  Închise ({countClosed})
                 </button>
               </div>
-
-              {/* Quick Date Buttons */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-700">
-                <button
-                  type="button"
-                  onClick={() => setDateFilter(todayStr)}
-                  className={`px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
-                    dateFilter === todayStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
-                  }`}
-                >
-                  Azi ({formatDateRomanian(todayStr)})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDateFilter(tomorrowStr)}
-                  className={`px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
-                    dateFilter === tomorrowStr ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
-                  }`}
-                >
-                  Mâine ({formatDateRomanian(tomorrowStr)})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDateFilter('')}
-                  className={`px-2.5 py-1.5 rounded-lg transition cursor-pointer ${
-                    !dateFilter ? 'bg-amber-500 text-slate-950 font-bold shadow-xs' : 'hover:text-slate-900'
-                  }`}
-                >
-                  Toate Datele
-                </button>
-              </div>
-
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                title="Filtrează după data livrării"
-                className="text-xs bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 focus:ring-2 focus:ring-amber-400 outline-hidden"
-              />
             </div>
           </div>
 

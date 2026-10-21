@@ -150,7 +150,7 @@ export function generatePrintDocumentHtml(params: {
             Pan Pan Comenzi
           </h1>
           <p style="font-size: 14px; color: #475569; margin: 4px 0 0 0; font-weight: 600;">
-            Raport & Foaie Livrare Producție (Moldova / Chișinău)
+            Raport & Foaie Livrare Producție
           </p>
         </div>
         <div style="text-align: right;">

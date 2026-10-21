@@ -110,7 +110,7 @@ export const PrintOrderModal: React.FC<PrintOrderModalProps> = ({
                       Pan Pan Comenzi
                     </h1>
                     <p className="text-sm text-slate-600 mt-1 font-medium">
-                      Raport & Foaie Livrare Producție (Moldova / Chișinău)
+                      Raport & Foaie Livrare Producție
                     </p>
                   </div>
                   <div className="text-right">

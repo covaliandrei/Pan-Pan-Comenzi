@@ -129,7 +129,14 @@ export function getMoldovaDateParts(date: Date = new Date()): { year: string; mo
   return { year, month, day };
 }
 
-// Helper to get formatted date string for today and tomorrow in Moldova timezone
+// Helper to get formatted date string for yesterday, today and tomorrow in Moldova timezone
+export function getYesterdayString(): string {
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const { year, month, day } = getMoldovaDateParts(yesterday);
+  return `${year}-${month}-${day}`;
+}
+
 export function getTodayString(): string {
   const { year, month, day } = getMoldovaDateParts();
   return `${year}-${month}-${day}`;
