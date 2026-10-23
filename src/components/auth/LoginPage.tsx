@@ -5,14 +5,12 @@ import {
   Mail,
   ArrowRight,
   AlertCircle,
-  Sparkles,
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types';
 
 export const LoginPage: React.FC = () => {
-  const { loginWithEmail, loginWithGoogle, quickDemoLogin } = useAuth();
+  const { loginWithEmail, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -51,20 +49,8 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       console.error('Eroare Google login:', err);
       if (err?.code !== 'auth/popup-closed-by-user') {
-        setErrorMsg('Conectarea cu Google a eșuat. Puteți folosi autentificarea cu email sau accesul demonstrativ de mai jos.');
+        setErrorMsg('Conectarea cu Google a eșuat. Vă rugăm să folosiți autentificarea cu email și parolă.');
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoClick = async (demoRole: UserRole) => {
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      await quickDemoLogin(demoRole);
-    } catch (err: any) {
-      setErrorMsg('Nu s-a putut realiza conectarea demo: ' + (err.message || 'Eroare necunoscută'));
     } finally {
       setLoading(false);
     }
@@ -188,54 +174,6 @@ export const LoginPage: React.FC = () => {
             <span>
               Conturile pentru punctele de vânzare și personal sunt create și administrate exclusiv de conducerea brutăriei. Pentru crearea sau modificarea unui cont, contactați administratorul.
             </span>
-          </div>
-
-          {/* Quick Demo Accounts Helper */}
-          <div className="mt-6 pt-5 border-t border-slate-200">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Acces Rapid Demonstrativ (Fără parolă)</span>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoClick('client')}
-                disabled={loading}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50/50 hover:border-amber-300 transition text-xs flex items-center justify-between cursor-pointer"
-              >
-                <div>
-                  <span className="font-bold text-slate-900 block">Punct de Lucru / Client</span>
-                  <span className="text-[11px] text-slate-500">Magazin Botanica (plasează și confirmă comenzi)</span>
-                </div>
-                <span className="text-amber-700 font-bold text-[11px]">Intră &rarr;</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleDemoClick('production')}
-                disabled={loading}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50/50 hover:border-amber-300 transition text-xs flex items-center justify-between cursor-pointer"
-              >
-                <div>
-                  <span className="font-bold text-slate-900 block">Personal Producție Brutărie</span>
-                  <span className="text-[11px] text-slate-500">Șef Tură (cântărire, picking, foaie coacere)</span>
-                </div>
-                <span className="text-amber-700 font-bold text-[11px]">Intră &rarr;</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleDemoClick('admin')}
-                disabled={loading}
-                className="w-full text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50/50 hover:border-amber-300 transition text-xs flex items-center justify-between cursor-pointer"
-              >
-                <div>
-                  <span className="font-bold text-slate-900 block">Manager / Administrator</span>
-                  <span className="text-[11px] text-slate-500">Gestiune utilizatori, catalog, import CSV, toate comenzile</span>
-                </div>
-                <span className="text-amber-700 font-bold text-[11px]">Intră &rarr;</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>

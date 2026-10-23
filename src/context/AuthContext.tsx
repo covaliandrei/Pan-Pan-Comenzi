@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (err?.code === 'auth/operation-not-allowed') {
         throw new Error(
-          'Autentificarea cu Email/Parolă nu este încă activată în consola Firebase (Authentication > Sign-in method > Email/Password). Vă rugăm să folosiți butonul "Conectare cu Google" sau "Acces Rapid Demonstrativ" de mai jos.'
+          'Autentificarea cu Email/Parolă nu este încă activată în consola Firebase (Authentication > Sign-in method > Email/Password). Vă rugăm să folosiți butonul "Conectare cu Google".'
         );
       }
       throw err;
@@ -231,7 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       if (err?.code === 'auth/operation-not-allowed') {
         throw new Error(
-          'Înregistrarea cu Email/Parolă nu este încă activată în consola Firebase (Authentication > Sign-in method > Email/Password). Vă rugăm să folosiți butonul "Conectare cu Google" sau "Acces Rapid Demonstrativ" de mai jos.'
+          'Înregistrarea cu Email/Parolă nu este încă activată în consola Firebase (Authentication > Sign-in method > Email/Password). Vă rugăm să folosiți butonul "Conectare cu Google".'
         );
       }
       throw err;

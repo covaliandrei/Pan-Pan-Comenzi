@@ -95,12 +95,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
-                type="text"
+                type="password"
                 required
-                placeholder="Introduceți noua parolă (ex: PanPan2026!)"
+                placeholder="Introduceți noua parolă (minim 6 caractere)"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden font-mono"
+                className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
               />
             </div>
             <p className="text-[11px] text-slate-400 mt-1">

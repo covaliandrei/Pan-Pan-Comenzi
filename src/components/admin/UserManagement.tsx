@@ -344,11 +344,6 @@ export const UserManagement: React.FC = () => {
                       <Calendar className="w-3 h-3" />
                       <span>Înregistrat: {formatDateDDMMYYYY(u.createdAt || '') || '-'}</span>
                     </div>
-                    {u.tempPassword && (
-                      <div className="text-[11px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded mt-1">
-                        Parolă setată: <span className="font-mono">{u.tempPassword}</span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Actions */}
@@ -430,11 +425,6 @@ export const UserManagement: React.FC = () => {
                             <div className="flex items-center space-x-1.5 text-slate-500 text-[11px]">
                               <Phone className="w-3 h-3 text-slate-400 shrink-0" />
                               <span>{u.phone}</span>
-                            </div>
-                          )}
-                          {u.tempPassword && (
-                            <div className="text-[10px] text-amber-700 font-semibold font-mono">
-                              Parolă: {u.tempPassword}
                             </div>
                           )}
                         </div>
@@ -519,10 +509,10 @@ export const UserManagement: React.FC = () => {
           isOpen={Boolean(passwordUser)}
           user={passwordUser}
           onClose={() => setPasswordUser(null)}
-          onSuccess={(newPass) => {
+          onSuccess={() => {
             setFeedbackMsg({
               type: 'success',
-              text: `Parola pentru "${passwordUser.displayName || passwordUser.email}" a fost actualizată: ${newPass}`,
+              text: `Parola pentru "${passwordUser.displayName || passwordUser.email}" a fost actualizată cu succes.`,
             });
             setTimeout(() => setFeedbackMsg(null), 5000);
           }}

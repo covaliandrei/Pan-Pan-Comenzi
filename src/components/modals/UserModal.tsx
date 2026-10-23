@@ -251,7 +251,7 @@ export const UserModal: React.FC<UserModalProps> = ({
                   <input
                     type="password"
                     required
-                    placeholder="Minim 6 caractere (ex: PanPan2026!)"
+                    placeholder="Minim 6 caractere"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-500 outline-hidden"
