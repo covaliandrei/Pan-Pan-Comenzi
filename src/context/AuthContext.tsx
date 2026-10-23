@@ -47,18 +47,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [simulatedRole, setSimulatedRole] = useState<UserRole | null>(null);
 
-  // Restore demo session from localStorage if present
+  // Clear any legacy demo session from localStorage - start with real data
   useEffect(() => {
-    const savedDemo = localStorage.getItem(LOCAL_STORAGE_DEMO_KEY);
-    if (savedDemo) {
-      try {
-        const parsed = JSON.parse(savedDemo) as UserProfile;
-        setProfile(parsed);
-        setIsDemoUser(true);
-      } catch (e) {
-        localStorage.removeItem(LOCAL_STORAGE_DEMO_KEY);
-      }
-    }
+    localStorage.removeItem(LOCAL_STORAGE_DEMO_KEY);
+    setIsDemoUser(false);
   }, []);
 
   useEffect(() => {

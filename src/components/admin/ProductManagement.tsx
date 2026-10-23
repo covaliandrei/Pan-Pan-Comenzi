@@ -19,7 +19,6 @@ import { db } from '../../lib/firebase';
 import { ProductModal } from '../modals/ProductModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { CategoryManagementModal } from '../modals/CategoryManagementModal';
-import { INITIAL_PRODUCTS } from '../../lib/initialData';
 import { cleanFirestorePayload } from '../../lib/sanitizer';
 
 export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ onOpenCsvImport }) => {
@@ -33,7 +32,6 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState<boolean>(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [isSeeding, setIsSeeding] = useState<boolean>(false);
 
   useEffect(() => {
     setLoading(true);
@@ -45,12 +43,12 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
           prods.push({ ...d.data(), id: d.id } as Product);
         });
         prods.sort((a, b) => a.name.localeCompare(b.name));
-        setProducts(prods.length > 0 ? prods : INITIAL_PRODUCTS.map((p, idx) => ({ ...p, id: `init-${p.code || idx}` })));
+        setProducts(prods);
         setLoading(false);
       },
       (error) => {
-        console.warn('Fallback to initial products on error:', error);
-        setProducts(INITIAL_PRODUCTS.map((p, idx) => ({ ...p, id: `init-${p.code || idx}` })));
+        console.warn('Eroare ascultare produse din Firestore:', error);
+        setProducts([]);
         setLoading(false);
       }
     );
@@ -89,24 +87,6 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
     }
   };
 
-  const seedDefaultCatalog = async () => {
-    try {
-      setIsSeeding(true);
-      for (const p of INITIAL_PRODUCTS) {
-        const already = products.some((existing) => existing.code === p.code && !existing.id.startsWith('init-'));
-        if (!already) {
-          await addDoc(collection(db, 'products'), cleanFirestorePayload({
-            ...p,
-            createdAt: new Date().toISOString(),
-          }));
-        }
-      }
-    } catch (err) {
-      console.error('Error seeding catalog:', err);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
 
   const [isResettingPrices, setIsResettingPrices] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
@@ -175,18 +155,6 @@ export const ProductManagement: React.FC<{ onOpenCsvImport: () => void }> = ({ o
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {products.length === 0 && (
-            <button
-              type="button"
-              onClick={seedDefaultCatalog}
-              disabled={isSeeding}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>{isSeeding ? 'Se adaugă...' : 'Inițializează Produse'}</span>
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => setIsCategoryModalOpen(true)}

@@ -20,10 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getTodayString,
   getTomorrowString,
-  INITIAL_PRODUCTS,
   formatDateRomanian,
-  DEFAULT_USERS,
-  DEFAULT_CATEGORIES,
 } from '../../lib/initialData';
 import { createOrder } from '../../lib/ordersService';
 
@@ -64,25 +61,16 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
             }
           });
 
-          const defaultClients = DEFAULT_USERS.filter((u) => u.role === 'client');
-          const mergedMap = new Map<string, UserProfile>();
-          defaultClients.forEach((c) => mergedMap.set(c.email, c));
-          list.forEach((c) => mergedMap.set(c.email, c));
-          const merged = Array.from(mergedMap.values());
-          merged.sort((a, b) =>
+          list.sort((a, b) =>
             (a.tradingPointName || a.displayName).localeCompare(b.tradingPointName || b.displayName)
           );
-          setClients(merged);
-          if (merged.length > 0) {
-            setSelectedClientId((prev) => prev || merged[0].id);
+          setClients(list);
+          if (list.length > 0) {
+            setSelectedClientId((prev) => prev || list[0].id);
           }
         } catch (e) {
           console.warn('Eroare la încărcarea clienților:', e);
-          const fallback = DEFAULT_USERS.filter((u) => u.role === 'client');
-          setClients(fallback);
-          if (fallback.length > 0) {
-            setSelectedClientId((prev) => prev || fallback[0].id);
-          }
+          setClients([]);
         }
       };
       fetchClients();
@@ -91,28 +79,23 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
 
   const selectedClient = clients.find((c) => c.id === selectedClientId) || clients[0] || null;
 
-  // Load products from Firestore safely without trying to write from client
+  // Load products from Firestore safely
   const loadProducts = async () => {
     try {
       setLoadingProducts(true);
       const snap = await getDocs(collection(db, 'products'));
-      if (snap.empty) {
-        // If Firestore catalog is empty, use initial bakery products directly in UI
-        setProducts(INITIAL_PRODUCTS.map((p, idx) => ({ ...p, id: `init-${p.code || idx}` })));
-      } else {
-        const prods: Product[] = [];
-        snap.forEach((d) => {
-          const data = d.data() as Product;
-          if (data.active !== false) {
-            prods.push({ ...data, id: d.id });
-          }
-        });
-        setProducts(prods.length > 0 ? prods : INITIAL_PRODUCTS.map((p, idx) => ({ ...p, id: `init-${p.code || idx}` })));
-      }
+      const prods: Product[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as Product;
+        if (data.active !== false) {
+          prods.push({ ...data, id: d.id });
+        }
+      });
+      prods.sort((a, b) => a.name.localeCompare(b.name));
+      setProducts(prods);
     } catch (err) {
-      console.warn('Utilizăm catalogul inițial de produse:', err);
-      // Fallback to initial products without crashing
-      setProducts(INITIAL_PRODUCTS.map((p, idx) => ({ ...p, id: `init-${p.code || idx}` })));
+      console.warn('Eroare la încărcarea produselor din Firestore:', err);
+      setProducts([]);
     } finally {
       setLoadingProducts(false);
     }
@@ -140,11 +123,13 @@ export const ClientNewOrder: React.FC<ClientNewOrderProps> = ({ onOrderCreated }
 
   const categories = React.useMemo(() => {
     const set = new Set<string>();
-    DEFAULT_CATEGORIES.forEach((c) => set.add(c));
     dbCategories.forEach((c) => set.add(c));
     products.forEach((p) => {
       if (p.category) set.add(p.category);
     });
+    if (set.size === 0) {
+      return ['Toate'];
+    }
     return ['Toate', ...Array.from(set)];
   }, [dbCategories, products]);
 

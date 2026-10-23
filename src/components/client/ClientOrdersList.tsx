@@ -69,13 +69,8 @@ export const ClientOrdersList: React.FC<{ onNewOrderClick: () => void }> = ({ on
           list.push({ ...docSnap.data(), id: docSnap.id } as Order);
         });
         list.sort((a, b) => (b.deliveryDate || '').localeCompare(a.deliveryDate || ''));
-        if (list.length > 0) {
-          setOrders(list);
-        } else if (isDemoUser && !currentUser) {
-          setOrders(getLocalOrders());
-        } else {
-          setOrders([]);
-        }
+        const realOrders = list.filter((o) => !o.id.startsWith('demo-'));
+        setOrders(realOrders);
         setLoading(false);
       },
       (error) => {

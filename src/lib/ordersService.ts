@@ -12,110 +12,40 @@ import {
 import { db, auth } from './firebase';
 import { Order } from '../types';
 import { cleanFirestorePayload } from './sanitizer';
-import { getTomorrowString } from './initialData';
 
 const LOCAL_STORAGE_ORDERS_KEY = 'panpan_local_orders';
 
-// Seed some initial demo orders so production and client have data immediately when testing
-const DEFAULT_DEMO_ORDERS: Order[] = [
-  {
-    id: 'demo-ord-101',
-    orderNumber: 'CMD-20261018-742',
-    clientId: 'demo-client-botanica',
-    clientName: 'Magazin Botanica',
-    clientEmail: 'magazin.centru@panpan.md',
-    orderDate: '2026-10-17',
-    deliveryDate: getTomorrowString(),
-    state: 'confirmat',
-    items: [
-      {
-        productId: 'init-PA-01',
-        productName: 'Pâine albă artizanală cu maia',
-        productCode: 'PA-01',
-        unit: 'buc',
-        unitPrice: 9.5,
-        orderedQuantity: 25,
-        pickedQuantity: 0,
-        itemTotal: 237.5,
-      },
-      {
-        productId: 'init-BG-03',
-        productName: 'Baghetă franțuzească tradițională',
-        productCode: 'BG-03',
-        unit: 'buc',
-        unitPrice: 5.0,
-        orderedQuantity: 15,
-        pickedQuantity: 0,
-        itemTotal: 75.0,
-      },
-      {
-        productId: 'init-CZ-06',
-        productName: 'Cozonac moldovenesc tradițional cu nucă și cacao',
-        productCode: 'CZ-06',
-        unit: 'kg',
-        unitPrice: 65.0,
-        orderedQuantity: 4.5,
-        pickedQuantity: 0,
-        itemTotal: 292.5,
-      },
-    ],
-    totalAmount: 605.0,
-    notes: 'Vă rugăm livrare dimineață până la ora 07:00. Pâinea cu maia nefeliată.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'demo-ord-102',
-    orderNumber: 'CMD-20261018-815',
-    clientId: 'demo-client-botanica',
-    clientName: 'Magazin Botanica',
-    clientEmail: 'magazin.centru@panpan.md',
-    orderDate: '2026-10-17',
-    deliveryDate: getTomorrowString(),
-    state: 'creat',
-    items: [
-      {
-        productId: 'init-CR-09',
-        productName: 'Croissant franțuzesc cu unt 82%',
-        productCode: 'CR-09',
-        unit: 'buc',
-        unitPrice: 6.5,
-        orderedQuantity: 20,
-        pickedQuantity: 0,
-        itemTotal: 130.0,
-      },
-      {
-        productId: 'init-PL-07',
-        productName: 'Plăcintă dobrogeană cu brânză de vaci și telemea',
-        productCode: 'PL-07',
-        unit: 'kg',
-        unitPrice: 42.0,
-        orderedQuantity: 3.0,
-        pickedQuantity: 0,
-        itemTotal: 126.0,
-      },
-    ],
-    totalAmount: 256.0,
-    notes: 'Comandă adițională de patiserie proaspătă.',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
+// Clean any legacy demo orders or sessions from local storage
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
+    if (raw) {
+      const parsed: Order[] = JSON.parse(raw);
+      const cleaned = parsed.filter((o) => !o.id.startsWith('demo-'));
+      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(cleaned));
+    }
+    localStorage.removeItem('panpan_demo_user');
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+// No demo orders - working strictly with real data
+const DEFAULT_DEMO_ORDERS: Order[] = [];
 
 export function getLocalOrders(): Order[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY);
     if (!raw) {
-      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(DEFAULT_DEMO_ORDERS));
-      return DEFAULT_DEMO_ORDERS;
+      return [];
     }
     const parsed: Order[] = JSON.parse(raw);
-    return parsed.map((o) => ({
+    return parsed.filter((o) => !o.id.startsWith('demo-')).map((o) => ({
       ...o,
       clientEmail: o.clientEmail ? o.clientEmail.replace(/panpan\.ro/g, 'panpan.md') : o.clientEmail,
     }));
   } catch {
-    return DEFAULT_DEMO_ORDERS;
+    return [];
   }
 }
 

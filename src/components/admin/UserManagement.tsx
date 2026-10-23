@@ -23,7 +23,7 @@ import { UserModal } from '../modals/UserModal';
 import { ConfirmModal } from '../modals/ConfirmModal';
 import { ChangePasswordModal } from '../modals/ChangePasswordModal';
 import { deleteUserAccount } from '../../lib/userService';
-import { DEFAULT_USERS, formatDateDDMMYYYY } from '../../lib/initialData';
+import { formatDateDDMMYYYY } from '../../lib/initialData';
 
 export const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -49,17 +49,13 @@ export const UserManagement: React.FC = () => {
         snapshot.forEach((docSnap) => {
           list.push({ ...docSnap.data(), id: docSnap.id } as UserProfile);
         });
-        const mergedMap = new Map<string, UserProfile>();
-        DEFAULT_USERS.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
-        list.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
-        const mergedList = Array.from(mergedMap.values());
-        mergedList.sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
-        setUsers(mergedList);
+        list.sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
+        setUsers(list);
         setLoading(false);
       },
       (error) => {
-        console.warn('Eroare ascultare utilizatori, se afiseaza fallback:', error);
-        setUsers(DEFAULT_USERS);
+        console.warn('Eroare ascultare utilizatori din Firestore:', error);
+        setUsers([]);
         setLoading(false);
       }
     );

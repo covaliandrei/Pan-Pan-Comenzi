@@ -74,10 +74,11 @@ export const AdminDashboard: React.FC<{
         snapshot.forEach((d) => {
           list.push({ ...d.data(), id: d.id } as Order);
         });
-        const mergedMap = new Map<string, Order>();
-        getLocalOrders().forEach((o) => mergedMap.set(o.id, o));
-        list.forEach((o) => mergedMap.set(o.id, o));
-        const mergedList = Array.from(mergedMap.values());
+        const realOrders = list.filter((o) => !o.id.startsWith('demo-'));
+        const offlinePending = getLocalOrders().filter(
+          (o) => !o.id.startsWith('demo-') && !realOrders.some((fs) => fs.id === o.id)
+        );
+        const mergedList = [...realOrders, ...offlinePending];
         mergedList.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
         setOrders(mergedList);
         setLoadingOrders(false);

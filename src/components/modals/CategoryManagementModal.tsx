@@ -3,7 +3,6 @@ import { X, Tag, Plus, Edit2, Trash2, AlertCircle, CheckCircle, Package } from '
 import { ProductCategory, Product } from '../../types';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { DEFAULT_CATEGORIES } from '../../lib/initialData';
 import { cleanFirestorePayload } from '../../lib/sanitizer';
 
 interface CategoryManagementModalProps {
@@ -35,21 +34,12 @@ export const CategoryManagementModal: React.FC<CategoryManagementModalProps> = (
           list.push({ ...d.data(), id: d.id } as ProductCategory);
         });
 
-        if (list.length === 0) {
-          // Initialize from DEFAULT_CATEGORIES
-          const defaults: ProductCategory[] = DEFAULT_CATEGORIES.map((cat, idx) => ({
-            id: `cat-default-${idx}`,
-            name: cat,
-          }));
-          setCategories(defaults);
-        } else {
-          list.sort((a, b) => a.name.localeCompare(b.name));
-          setCategories(list);
-        }
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setCategories(list);
       },
       (err) => {
-        console.warn('Fallback categorii:', err);
-        setCategories(DEFAULT_CATEGORIES.map((cat, idx) => ({ id: `cat-default-${idx}`, name: cat })));
+        console.warn('Eroare ascultare categorii:', err);
+        setCategories([]);
       }
     );
 

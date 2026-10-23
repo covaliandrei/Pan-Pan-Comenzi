@@ -68,18 +68,11 @@ export const ProductionDashboard: React.FC = () => {
           firestoreList.push({ ...docSnap.data(), id: docSnap.id } as Order);
         });
 
-        let finalList: Order[] = [];
-        if (firestoreList.length > 0) {
-          // Firestore has orders: prioritize them and avoid duplicating demo data
-          const local = getLocalOrders();
-          const fsOrderNumbers = new Set(firestoreList.map((o) => o.orderNumber));
-          const offlinePending = local.filter(
-            (o) => o.id.startsWith('ord-') && !fsOrderNumbers.has(o.orderNumber)
-          );
-          finalList = [...firestoreList, ...offlinePending];
-        } else {
-          finalList = getLocalOrders();
-        }
+        const realOrders = firestoreList.filter((o) => !o.id.startsWith('demo-'));
+        const local = getLocalOrders().filter((o) => !o.id.startsWith('demo-'));
+        const fsOrderNumbers = new Set(realOrders.map((o) => o.orderNumber));
+        const offlinePending = local.filter((o) => !fsOrderNumbers.has(o.orderNumber));
+        const finalList = [...realOrders, ...offlinePending];
 
         finalList.sort((a, b) => {
           if (a.state === 'confirmat' && b.state !== 'confirmat') return -1;
