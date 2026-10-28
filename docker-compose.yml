@@ -1,0 +1,16 @@
+services:
+  panpan-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: panpan-app
+    restart: unless-stopped
+    ports:
+      - "3080:80"
+    # Optional: connect directly to Nginx Proxy Manager's docker network if you use internal hostnames
+    # networks:
+    #   - npm-network
+
+# networks:
+#   npm-network:
+#     external: true
