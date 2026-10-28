@@ -1,13 +1,13 @@
 # Multi-stage Dockerfile for Pan Pan Comenzi React SPA
 
 # Stage 1: Build the React application
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies first for efficient layer caching
+# Install dependencies with legacy peer deps for reliable resolution
 COPY package*.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Copy all source files and configurations
 COPY . .
