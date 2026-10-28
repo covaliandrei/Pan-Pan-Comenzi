@@ -1,10 +1,15 @@
 # Multi-stage Dockerfile for Pan Pan Comenzi React SPA
-# Stage 1: Build the React application using Bun Debian (glibc, 100% ARM64/AMD64 compatible)
-FROM oven/bun:debian AS builder
+
+# Stage 1: Build the React application
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Accept environment variables from Portainer / docker-compose
+# Ensure devDependencies are installed and limit memory to avoid VPS OOM killer
+ENV NODE_ENV=development
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
+# Environment variables injected as build args (from Portainer or .env)
 ARG VITE_FIREBASE_PROJECT_ID
 ARG VITE_FIREBASE_APP_ID
 ARG VITE_FIREBASE_API_KEY
@@ -23,22 +28,22 @@ ENV VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
 ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
 ENV VITE_FIREBASE_OAUTH_CLIENT_ID=$VITE_FIREBASE_OAUTH_CLIENT_ID
 
-# Copy package definitions
+# Copy ONLY package.json.
+# Skipping architecture-specific package-lock.json allows npm to automatically download
+# the correct native bindings for ARM64 (aarch64) or AMD64 (x86_64), fixing npm bug #4828.
 COPY package.json ./
+RUN npm install --legacy-peer-deps --include=dev --no-audit
 
-# Fast, clean dependency installation with native platform resolution
-RUN bun install
-
-# Copy source code and configuration
+# Copy all source files and configuration
 COPY . .
 
-# Build production bundle (generates /app/dist)
-RUN bun run build
+# Build production bundle (outputs to /app/dist)
+RUN npm run build
 
-# Stage 2: Serve using lightweight, high-performance Nginx
+# Stage 2: Serve using high-performance lightweight Nginx
 FROM nginx:alpine
 
-# Clean default welcome page
+# Remove default Nginx welcome site
 RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built static assets from builder stage
