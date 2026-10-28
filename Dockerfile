@@ -28,13 +28,21 @@ ENV VITE_FIREBASE_STORAGE_BUCKET=$VITE_FIREBASE_STORAGE_BUCKET
 ENV VITE_FIREBASE_MESSAGING_SENDER_ID=$VITE_FIREBASE_MESSAGING_SENDER_ID
 ENV VITE_FIREBASE_OAUTH_CLIENT_ID=$VITE_FIREBASE_OAUTH_CLIENT_ID
 
-# Copy ONLY package.json.
-# Skipping architecture-specific package-lock.json allows npm to automatically download
-# the correct native bindings for ARM64 (aarch64) or AMD64 (x86_64), fixing npm bug #4828.
+# Copy package.json
 COPY package.json ./
-RUN npm install --legacy-peer-deps --include=dev --no-audit
+RUN npm install --legacy-peer-deps --include=dev --include=optional --no-audit
 
-# Copy all source files and configuration
+# Workaround for npm bug #4828:
+# Explicitly install the native Rolldown binary for the exact CPU architecture (ARM64 vs x86_64)
+RUN ARCH=$(uname -m) && \
+    echo "Current CPU architecture: $ARCH" && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+      npm install @rolldown/binding-linux-arm64-gnu@1.2.14 --no-save --legacy-peer-deps || true; \
+    else \
+      npm install @rolldown/binding-linux-x64-gnu@1.2.14 --no-save --legacy-peer-deps || true; \
+    fi
+
+# Copy source files
 COPY . .
 
 # Build production bundle (outputs to /app/dist)
