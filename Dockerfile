@@ -1,16 +1,19 @@
 # Multi-stage Dockerfile for Pan Pan Comenzi React SPA
 
-# Stage 1: Build the React application using standard glibc Node environment
+# Stage 1: Build the React application
 FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Ensure devDependencies are installed even if host has NODE_ENV=production
+# Ensure devDependencies are installed and limit memory to avoid VPS OOM killer
 ENV NODE_ENV=development
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 
-# Install dependencies first for efficient layer caching
-COPY package*.json ./
-RUN npm install --legacy-peer-deps --include=dev
+# Copy ONLY package.json.
+# Skipping architecture-specific package-lock.json allows npm to automatically download
+# the correct native bindings for ARM64 (aarch64) or AMD64 (x86_64), fixing npm bug #4828.
+COPY package.json ./
+RUN npm install --legacy-peer-deps --include=dev --no-audit
 
 # Copy all source files and configuration
 COPY . .
