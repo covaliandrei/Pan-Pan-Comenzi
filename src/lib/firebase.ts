@@ -2,19 +2,19 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 
-// Self-contained Firebase configuration for Pan Pan Comenzi (Firestore & Auth)
-// Guarantees zero-failure production builds even if external JSON config is omitted in git
+// Reads Firebase configuration exclusively from environment variables (e.g. .env or Docker build args)
+// Zero hardcoded credentials committed to source code
 export const firebaseConfig = {
-  projectId: "gen-lang-client-0405620372",
-  appId: "1:858792457111:web:1bd72bce49739e90548ad2",
-  apiKey: "AIzaSyBVLSab5qIzpMSuCUQIJJocNSMuUPidpkk",
-  authDomain: "gen-lang-client-0405620372.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-panpancomenzi-c77d0f45-9751-4233-adea-b159378d6d5e",
-  storageBucket: "gen-lang-client-0405620372.firebasestorage.app",
-  messagingSenderId: "858792457111",
-  measurementId: "",
-  oAuthClientId: "858792457111-kr2lg5m34qmbgqrpndkcvd127nmojfds.apps.googleusercontent.com",
-  recaptchaSiteKey: ""
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
+  oAuthClientId: import.meta.env.VITE_FIREBASE_OAUTH_CLIENT_ID || '',
+  recaptchaSiteKey: import.meta.env.VITE_FIREBASE_RECAPTCHA_SITE_KEY || '',
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
