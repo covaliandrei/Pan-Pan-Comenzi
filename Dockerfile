@@ -1,30 +1,33 @@
 # Multi-stage Dockerfile for Pan Pan Comenzi React SPA
 
-# Stage 1: Build the React application
-FROM node:22-alpine AS builder
+# Stage 1: Build the React application using standard glibc Node environment
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Install dependencies with legacy peer deps for reliable resolution
-COPY package*.json ./
-RUN npm install --legacy-peer-deps
+# Ensure devDependencies are installed even if host has NODE_ENV=production
+ENV NODE_ENV=development
 
-# Copy all source files and configurations
+# Install dependencies first for efficient layer caching
+COPY package*.json ./
+RUN npm install --legacy-peer-deps --include=dev
+
+# Copy all source files and configuration
 COPY . .
 
 # Build production bundle (outputs to /app/dist)
 RUN npm run build
 
-# Stage 2: Serve using high-performance Nginx
+# Stage 2: Serve using high-performance lightweight Nginx
 FROM nginx:alpine
 
 # Remove default Nginx welcome site
 RUN rm -rf /usr/share/nginx/html/*
 
-# Copy built assets from builder stage
+# Copy built static assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom Nginx configuration with SPA fallback
+# Copy custom Nginx configuration with SPA fallback and security headers
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose HTTP port
