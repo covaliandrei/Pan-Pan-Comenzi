@@ -1,20 +1,20 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import rawConfig from '../../firebase-applet-config.json';
 
-// Firebase configuration supporting both environment variables and firebase-applet-config.json
+// Self-contained Firebase configuration for Pan Pan Comenzi (Firestore & Auth)
+// Guarantees zero-failure production builds even if external JSON config is omitted in git
 export const firebaseConfig = {
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || rawConfig.projectId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || rawConfig.appId,
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || rawConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || rawConfig.authDomain,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || rawConfig.firestoreDatabaseId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || rawConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || rawConfig.messagingSenderId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || rawConfig.measurementId || '',
-  oAuthClientId: import.meta.env.VITE_FIREBASE_OAUTH_CLIENT_ID || rawConfig.oAuthClientId || '',
-  recaptchaSiteKey: import.meta.env.VITE_FIREBASE_RECAPTCHA_SITE_KEY || rawConfig.recaptchaSiteKey || '',
+  projectId: "gen-lang-client-0405620372",
+  appId: "1:858792457111:web:1bd72bce49739e90548ad2",
+  apiKey: "AIzaSyBVLSab5qIzpMSuCUQIJJocNSMuUPidpkk",
+  authDomain: "gen-lang-client-0405620372.firebaseapp.com",
+  firestoreDatabaseId: "ai-studio-panpancomenzi-c77d0f45-9751-4233-adea-b159378d6d5e",
+  storageBucket: "gen-lang-client-0405620372.firebasestorage.app",
+  messagingSenderId: "858792457111",
+  measurementId: "",
+  oAuthClientId: "858792457111-kr2lg5m34qmbgqrpndkcvd127nmojfds.apps.googleusercontent.com",
+  recaptchaSiteKey: ""
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
