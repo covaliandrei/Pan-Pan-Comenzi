@@ -170,12 +170,12 @@ export function generatePrintDocumentHtml(params: {
         <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; background: #fff;">
           <thead>
             <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #1e293b; text-align: left;">
-              <th style="padding: 7px 10px; width: 35px; text-align: center;">#</th>
-              <th style="padding: 7px 10px; width: 70px;">Cod</th>
-              <th style="padding: 7px 10px;">Denumire Produs</th>
-              <th style="padding: 7px 10px; text-align: center; width: 60px;">Unitate</th>
-              <th style="padding: 7px 10px; text-align: right; width: 110px;">Total Necesar</th>
-              <th style="padding: 7px 10px; text-align: right; width: 110px;">Total Pregătit</th>
+              <th style="padding: 0px 10px; width: 35px; text-align: center;">#</th>
+              <th style="padding: 0px 10px; width: 70px;">Cod</th>
+              <th style="padding: 0px 10px;">Denumire Produs</th>
+              <th style="padding: 0px 10px; text-align: center; width: 60px;">Unitate</th>
+              <th style="padding: 0px 10px; text-align: right; width: 110px;">Total Necesar</th>
+              <th style="padding: 0px 10px; text-align: right; width: 110px;">Total Pregătit</th>
             </tr>
           </thead>
           <tbody style="divide-y: 1px solid #e2e8f0;">
@@ -201,20 +201,20 @@ export function generatePrintDocumentHtml(params: {
         const total = it.itemTotal || Number((qty * it.unitPrice).toFixed(2));
         return `
         <tr style="border-bottom: 1px solid #e2e8f0;">
-          <td style="padding: 7px 10px; text-align: center; color: #64748b;">${idx + 1}</td>
-          <td style="padding: 7px 10px; font-family: monospace; font-size: 11px; color: #475569;">${it.productCode || '-'}</td>
-          <td style="padding: 7px 10px; font-weight: 600; color: #0f172a;">${it.productName}</td>
-          <td style="padding: 7px 10px; text-align: center; color: #64748b;">${it.unit}</td>
-          <td style="padding: 7px 10px; text-align: right; color: #334155;">${it.unitPrice.toFixed(2)} lei</td>
-          <td style="padding: 7px 10px; text-align: right; font-weight: bold; color: #0f172a;">${it.orderedQuantity}</td>
-          <td style="padding: 7px 10px; text-align: right; font-weight: bold; color: #047857;">
+          <td style="padding: 0px 10px; text-align: center; color: #64748b;">${idx + 1}</td>
+          <td style="padding: 0px 10px; font-family: monospace; font-size: 11px; color: #475569;">${it.productCode || '-'}</td>
+          <td style="padding: 0px 10px; font-weight: 600; color: #0f172a;">${it.productName}</td>
+          <td style="padding: 0px 10px; text-align: center; color: #64748b;">${it.unit}</td>
+          <td style="padding: 0px 10px; text-align: right; color: #334155;">${it.unitPrice.toFixed(2)} lei</td>
+          <td style="padding: 0px 10px; text-align: right; font-weight: bold; color: #0f172a;">${it.orderedQuantity}</td>
+          <td style="padding: 0px 10px; text-align: right; font-weight: bold; color: #047857;">
             ${isClosed
               ? (it.pickedQuantity !== undefined ? it.pickedQuantity : it.orderedQuantity)
               : typeof it.pickedQuantity === 'number' && it.pickedQuantity > 0
               ? it.pickedQuantity
               : '<span style="color: #94a3b8; font-style: italic; font-weight: normal; font-size: 11px;">În așteptare cântărire</span>'}
           </td>
-          <td style="padding: 7px 10px; text-align: right; font-weight: bold; color: #0f172a;">
+          <td style="padding: 0px 10px; text-align: right; font-weight: bold; color: #0f172a;">
             ${total.toFixed(2)} lei
           </td>
         </tr>
@@ -272,14 +272,14 @@ export function generatePrintDocumentHtml(params: {
         <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; background: #fff;">
           <thead>
             <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #1e293b; text-align: left;">
-              <th style="padding: 7px 10px; text-align: center; width: 35px;">#</th>
-              <th style="padding: 7px 10px; width: 70px;">Cod</th>
-              <th style="padding: 7px 10px;">Produs</th>
-              <th style="padding: 7px 10px; text-align: center; width: 50px;">Unitate</th>
-              <th style="padding: 7px 10px; text-align: right; width: 80px;">Preț Unitar</th>
-              <th style="padding: 7px 10px; text-align: right; width: 75px;">Comandat</th>
-              <th style="padding: 7px 10px; text-align: right; width: 75px;">Livrat</th>
-              <th style="padding: 7px 10px; text-align: right; width: 90px;">Total</th>
+              <th style="padding: 0px 10px; text-align: center; width: 35px;">#</th>
+              <th style="padding: 0px 10px; width: 70px;">Cod</th>
+              <th style="padding: 0px 10px;">Produs</th>
+              <th style="padding: 0px 10px; text-align: center; width: 50px;">Unitate</th>
+              <th style="padding: 0px 10px; text-align: right; width: 80px;">Preț Unitar</th>
+              <th style="padding: 0px 10px; text-align: right; width: 75px;">Comandat</th>
+              <th style="padding: 0px 10px; text-align: right; width: 75px;">Livrat</th>
+              <th style="padding: 0px 10px; text-align: right; width: 90px;">Total</th>
             </tr>
           </thead>
           <tbody>
